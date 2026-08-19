@@ -70,6 +70,10 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## İterasyon 18 (2026-06) — Login ürünleştirme + sidebar logo büyütme
+- Login tamamen yeniden tasarlandı: split panel yerine **açık renk (#f3f3f7) zeminde ortalanmış premium kart** (bg-white, yumuşak gölge), üstte büyük okunur logo (h-16), Google ile devam + ayraç + form, mor (#5859a3) marka butonu; arka planda ince mor/sarı radial ışıma + nokta-grid. `login-*` test id'leri korundu; Google auth redirect mantığı değişmedi.
+- Sidebar başlığı h-16'ya, logo h-11'e büyütüldü — okunabilirlik sağlandı.
+
 ## İterasyon 17 (2026-06) — Login beyaz zemin + logo okunurluğu
 - Login sol paneli koyu fotoğraftan **beyaz zemine** alındı; logo beyaz üzerinde büyük/okunur; köşelerde mor (#5859a3) + sarı (#fcea10) yumuşak radial ışımalar ve hafif mor nokta-grid dokusu (özgün, markalı). Minimal "EKİP · GÖREV · FİKİR" şeridi.
 - Sidebar wordmark logosu büyütüldü (h-6 → h-8) — okunabilirlik arttı. Logo chip padding'i sıkılaştırıldı.
