@@ -1,0 +1,41 @@
+# Fikirizm Cloud — PRD
+
+## Problem Statement
+ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proje & görev yönetim SaaS'ı (Fikirizm için). Görev yönetimi (4 görünüm), fikir/öneri panosu, dashboard, bildirimler, roller ve gerçek zamanlı güncellemeler.
+
+## Architecture
+- **Frontend**: React 19 + CRACO, Tailwind, shadcn/ui, react-query, framer-motion, recharts. Fonts: Outfit (başlık) + Inter (gövde). İndigo birincil renk. Açık/Koyu tema (next-themes).
+- **Backend**: FastAPI (modüler: server.py, routes.py, deps.py, models.py, seed.py, realtime.py). Tüm rotalar `/api` önekli.
+- **DB**: MongoDB. UUID `id`/`user_id` desenli (ObjectId sızıntısı yok). Her belge `org_id` + `workspace_id` taşır (multi-tenant izolasyona hazır).
+- **Auth**: Email/parola (JWT) + Emergent Google OAuth. ÖNEMLİ: platform ingress CORS'u `*`'a zorladığı için tarayıcıda cookie/credentialed istekler bloklanıyor → **Bearer token** (localStorage `fik_token`) kullanılıyor. Backend hem cookie hem Bearer (JWT veya Google session token) çözer.
+- **Realtime**: WebSocket `/api/ws/{workspace_id}` (token ile auth'lı); mutasyonlar workspace'e broadcast edilir, frontend react-query invalidate eder.
+
+## User Personas
+- **Owner (ingobiosport@gmail.com)**: tam yetki, üye davet.
+- **Admin**: üye yönetimi + tüm projeler.
+- **Member**: atandığı/erişimi olan işler.
+
+## Core Requirements (static)
+1. Görev yönetimi: Liste, Kanban (drag-drop), Takvim, Gantt görünümleri; başlık, zengin metin açıklama, durum, öncelik, atananlar, son tarih, etiket, checklist, alt görev, yorum. Toplu işlem, filtre, global arama (Cmd/Ctrl+K).
+2. Fikirler modülü: ekleme, upvote, yorum, durum akışı (Yeni→Değerlendiriliyor→Onaylandı→Reddedildi), göreve dönüştürme, sıralama.
+3. Dashboard: açık/geciken/bu hafta/tamamlanan metrikleri, durum dağılımı & iş yükü grafikleri, bana atananlar, son aktiviteler.
+4. Bildirim merkezi (atama, yorum, oy, durum değişimi).
+5. Kullanıcı & rol yönetimi, workspace üye davet.
+
+## Implemented (2026-08-19)
+- ✅ Tüm auth (JWT + Google OAuth wiring), brute-force lockout (eşik bazlı), Bearer token akışı.
+- ✅ Bootstrap, workspace/proje CRUD, görev CRUD + alt görev + checklist + yorum + toplu işlem + filtre.
+- ✅ 4 görünüm (Liste reorder, Kanban drag-drop, Takvim, Gantt).
+- ✅ Fikirler: CRUD, oy, yorum, durum, göreve dönüştürme, sıralama.
+- ✅ Dashboard grafikleri, bildirim merkezi, global arama (regex-escape'li), üye yönetimi + davet.
+- ✅ WebSocket realtime (token auth'lı). Açık/koyu tema. Türkçe arayüz. Seed demo verisi.
+- ✅ Test: backend 17/17 pytest pass, frontend E2E %100 pass.
+
+## Backlog
+- **P1**: E-posta bildirimleri (Resend); gerçek davet akışı (tek kullanımlık token/parola, şu an DEMO_PASSWORD ile eklenir); tam Gantt bağımlılık motoru; dosya eki yükleme (object storage).
+- **P2**: Google OAuth E2E doğrulama; çoklu organizasyon UI'ı; özelleştirilebilir durum yönetimi UI; mobil sidebar; Slack entegrasyonu.
+
+## Next Tasks
+- Resend ile e-posta bildirimleri.
+- Görev dosya ekleri (object storage).
+- Gerçek üye davet akışı (davet e-postası + kurulum linki).

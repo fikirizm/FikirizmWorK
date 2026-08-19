@@ -1,0 +1,125 @@
+{
+  "project_name": "Fikirizm Cloud",
+  "theme_strategy": "Swiss & High-Contrast with Linear/ClickUp inspired polish. Must include Light/Dark toggle.",
+  "typography": {
+    "headings": "Outfit, sans-serif (Weights: 500, 600, 700) - Tight tracking.",
+    "body": "Inter, sans-serif (Weights: 400, 500) - Clean, neutral, high legibility.",
+    "rules": [
+      "Never use default generic bold for all headings. Use tracking-tight for H1-H3.",
+      "Use tabular-nums for dashboards and metrics.",
+      "Sizes: H1 (text-3xl/4xl), H2 (text-2xl), H3 (text-xl), Widget Titles (text-sm font-semibold tracking-wide uppercase text-muted-foreground)"
+    ]
+  },
+  "colors": {
+    "light": {
+      "background": "#FAFAFA",
+      "surface": "#FFFFFF",
+      "primary": "#4F46E5",
+      "text": "#09090B",
+      "border": "#E4E4E7",
+      "muted": "#71717A"
+    },
+    "dark": {
+      "background": "#09090B",
+      "surface": "#18181B",
+      "primary": "#6366F1",
+      "text": "#FAFAFA",
+      "border": "#27272A",
+      "muted": "#A1A1AA"
+    },
+    "semantic_status": {
+      "todo": "zinc-500",
+      "in_progress": "blue-500",
+      "done": "emerald-500",
+      "canceled": "red-500",
+      "idea_new": "indigo-500",
+      "idea_evaluating": "amber-500",
+      "idea_approved": "emerald-500",
+      "idea_rejected": "red-500"
+    },
+    "semantic_priority": {
+      "low": "zinc-500",
+      "medium": "blue-500",
+      "high": "orange-500",
+      "urgent": "red-600"
+    },
+    "rules": [
+      "DO NOT use pure black or pure white for backgrounds. Always tint with zinc/slate.",
+      "Use high contrast for text. Avoid gray-on-gray unreadable text.",
+      "Status colors should be used as subtle background tints (10% opacity) with solid dots or text for badges."
+    ]
+  },
+  "visual_enhancers": {
+    "borders": "1px solid border (zinc-200 light / zinc-800 dark) everywhere for structure. No completely borderless floating cards.",
+    "shadows": "Light mode: shadow-sm for cards, shadow-lg for dropdowns/modals. Dark mode: rely on borders and subtle inner shadows, rarely use drop shadows.",
+    "radius": "rounded-lg for standard elements (buttons, inputs), rounded-xl for cards/modals. (ClickUp/Linear mix)",
+    "glassmorphism": "Used only for sticky topbar/nav: backdrop-blur-md bg-background/80 or bg-background/95. NEVER transparent."
+  },
+  "layouts": {
+    "app_shell": "Left Sidebar (w-64 expanded, w-16 collapsed) + Right Content Area. Topbar inside Right Content (h-14, sticky, borders).",
+    "dashboard_grid": "Bento style. grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4. 2-col span for charts, 1-col for metric cards.",
+    "kanban_board": "Horizontal flex container, overflow-x-auto, columns min-w-[300px].",
+    "list_view": "Data table style. No vertical borders. Subtle horizontal borders (border-b). Hover state on rows (hover:bg-muted/50)."
+  },
+  "component_instructions": {
+    "forms_inputs": "Use Shadcn UI. Height h-9 or h-10. Focus rings must be primary color ring-2 ring-offset-2.",
+    "buttons": "Primary: Solid indigo. Secondary: Outline or ghost. Avoid pill shapes, use rounded-md or rounded-lg.",
+    "avatars": "Small (w-6 h-6 or w-8 h-8), rounded-full, with border. If multiple, overlap them (-space-x-2).",
+    "modals_drawers": "Use slide-out drawers (Sheet) for Task Details to keep context without navigating away.",
+    "task_card": "Minimalist. Title, colored status dot, due date (red if overdue), assignee avatar, priority icon.",
+    "idea_card": "Must prominently feature an upvote button (left or top-right) with vote count."
+  },
+  "motion": {
+    "drag_drop": "Use robust libraries for drag-and-drop. Add scale-105 and shadow-xl to the dragging item. Highlight drop zones.",
+    "transitions": "Hover states: transition-colors duration-200. Sidebar collapse: transition-all duration-300 ease-in-out.",
+    "loading": "Skeleton loaders for dashboard widgets and task lists. No spinning loaders for main content blocks."
+  },
+  "media": {
+    "image_urls": {
+      "auth_background": {
+        "url": "https://images.pexels.com/photos/36988279/pexels-photo-36988279.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Abstract minimalist architecture for the login page split-screen background."
+      },
+      "avatar_1": {
+        "url": "https://images.unsplash.com/photo-1740252117070-7aa2955b25f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBhdmF0YXIlMjBwb3J0cmFpdHxlbnwwfHx8fDE3ODcxMzM0ODl8MA&ixlib=rb-4.1.0&q=85",
+        "description": "3D style avatar for modern SaaS feel"
+      },
+      "avatar_2": {
+        "url": "https://images.unsplash.com/photo-1740252117013-4fb21771e7ca?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwyfHxwcm9mZXNzaW9uYWwlMjBhdmF0YXIlMjBwb3J0cmFpdHxlbnwwfHx8fDE3ODcxMzM0ODl8MA&ixlib=rb-4.1.0&q=85",
+        "description": "3D style cartoon avatar"
+      },
+      "avatar_3": {
+        "url": "https://images.pexels.com/photos/20157010/pexels-photo-20157010.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Professional male avatar"
+      }
+    }
+  },
+  "accessibility": {
+    "rules": [
+      "All interactive elements and key informational elements MUST include a data-testid attribute.",
+      "Ensure color contrast is APCA/WCAG compliant. Never rely on color alone to convey status.",
+      "Keyboard navigation (Cmd/Ctrl+K for global search) is mandatory."
+    ]
+  },
+  "universal_guidelines_for_main_agent": [
+    "Language: Entire UI MUST be in Turkish (Türkçe). Examples: 'Görevler' instead of 'Tasks', 'Fikirler' instead of 'Ideas', 'Ayarlar' instead of 'Settings'.",
+    "File Extensions: Use .js and .jsx files (NOT .tsx or .ts). Typescript is not configured, write pure JS/JSX.",
+    "Do not use generic centered text alignment on the main app container.",
+    "Use lucide-react for icons. Avoid emojis entirely.",
+    "Use sonner for toasts.",
+    "Implement a realistic top-bar with Breadcrumbs, Global Search (Cmd+K mockup), Notification Bell, and User Dropdown.",
+    "Make the 'Fikirler' (Ideas) board distinct with a clean upvote interaction design.",
+    "Ensure the application feels like a real product with robust empty states and mock data for all views (List, Kanban, Calendar, Gantt, Dashboard).",
+    "No AI-slop gradients. Keep backgrounds solid with subtle borders.",
+    "All headers/navs must have a background (e.g. bg-background/95 backdrop-blur). DO NOT use complete transparent background in header, overlays, any surface that has content under it.",
+    "Create depth through layered design elements with z-index hierarchy, crisp edges via semi-transparent borders.",
+    "Every interaction needs micro-animations - hover states, transitions, entrance animations. Static = dead."
+  ],
+  "general_ui_ux_design_guidelines": [
+    "Adopt a 'Linear' mixed with 'ClickUp' aesthetic: High precision, distinct semantic coloring, and plenty of breathing room.",
+    "Avoid the generic SaaS blue; use Indigo as primary brand color for Fikirizm.",
+    "Organize complex data via progressive disclosure (use drawers/modals for task details instead of cluttered pages).",
+    "Dashboard should focus on actionable metrics: Open Tasks, Overdue, Upcoming Deadlines, and Workload Distribution.",
+    "Empty states should be illustrations or beautifully styled text blocks encouraging user action (e.g., 'İlk projenizi oluşturun')."
+  ]
+}
