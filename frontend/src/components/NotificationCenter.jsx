@@ -37,7 +37,7 @@ export function NotificationCenter() {
         <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-lg" data-testid="notifications-btn">
           <Bell className="h-[18px] w-[18px]" />
           {unread > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white" data-testid="notification-badge">
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground" data-testid="notification-badge">
               {unread > 9 ? "9+" : unread}
             </span>
           )}

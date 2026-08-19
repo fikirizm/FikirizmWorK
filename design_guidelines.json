@@ -1,125 +1,113 @@
 {
-  "project_name": "Fikirizm Cloud",
-  "theme_strategy": "Swiss & High-Contrast with Linear/ClickUp inspired polish. Must include Light/Dark toggle.",
+  "design_philosophy": "Premium, high-density, tactile SaaS dashboard. Moves away from 'airy/bubbly' generic standard designs to a 'Swiss Brutalist' and 'Old Money Tech' hybrid. Prioritizes information density, sharp edges, monochromatic structure with highly deliberate accent highlights, and optical clarity. Tailored for Turkish language localization with proper font-support.",
+  "theme": "High-Contrast Monochrome with Tactile Surfaces. Light/Dark mode togglable.",
   "typography": {
-    "headings": "Outfit, sans-serif (Weights: 500, 600, 700) - Tight tracking.",
-    "body": "Inter, sans-serif (Weights: 400, 500) - Clean, neutral, high legibility.",
-    "rules": [
-      "Never use default generic bold for all headings. Use tracking-tight for H1-H3.",
-      "Use tabular-nums for dashboards and metrics.",
-      "Sizes: H1 (text-3xl/4xl), H2 (text-2xl), H3 (text-xl), Widget Titles (text-sm font-semibold tracking-wide uppercase text-muted-foreground)"
-    ]
+    "primary_heading": "Cabinet Grotesk",
+    "primary_body": "Manrope",
+    "data_mono": "JetBrains Mono",
+    "forbidden_fonts": ["Inter", "Roboto", "Open Sans", "Outfit", "Space Grotesk"],
+    "rules": {
+      "language_support": "MUST ensure fonts support Turkish characters (Latin Extended).",
+      "h1": "text-2xl sm:text-3xl font-medium tracking-tight",
+      "h2": "text-lg sm:text-xl font-semibold tracking-tight",
+      "body": "text-sm leading-snug text-zinc-600 dark:text-zinc-400",
+      "metadata": "text-[11px] uppercase tracking-widest font-bold",
+      "general": "Avoid font-bold for everything. Use font-medium for subtle emphasis. Use tracking-tight for all headings."
+    }
   },
   "colors": {
     "light": {
-      "background": "#FAFAFA",
+      "background": "#F9FAFB",
       "surface": "#FFFFFF",
-      "primary": "#4F46E5",
-      "text": "#09090B",
-      "border": "#E4E4E7",
-      "muted": "#71717A"
+      "border": "#E5E7EB",
+      "primary": "#0A0A0A",
+      "primary_text": "#FFFFFF",
+      "text_main": "#171717",
+      "text_muted": "#52525B",
+      "accent_highlight": "#F4F4F5"
     },
     "dark": {
       "background": "#09090B",
-      "surface": "#18181B",
-      "primary": "#6366F1",
-      "text": "#FAFAFA",
+      "surface": "#121214",
       "border": "#27272A",
-      "muted": "#A1A1AA"
+      "primary": "#FAFAFA",
+      "primary_text": "#0A0A0A",
+      "text_main": "#FAFAFA",
+      "text_muted": "#A1A1AA",
+      "accent_highlight": "#18181B"
     },
-    "semantic_status": {
-      "todo": "zinc-500",
-      "in_progress": "blue-500",
-      "done": "emerald-500",
-      "canceled": "red-500",
-      "idea_new": "indigo-500",
-      "idea_evaluating": "amber-500",
-      "idea_approved": "emerald-500",
-      "idea_rejected": "red-500"
-    },
-    "semantic_priority": {
-      "low": "zinc-500",
-      "medium": "blue-500",
-      "high": "orange-500",
-      "urgent": "red-600"
-    },
-    "rules": [
-      "DO NOT use pure black or pure white for backgrounds. Always tint with zinc/slate.",
-      "Use high contrast for text. Avoid gray-on-gray unreadable text.",
-      "Status colors should be used as subtle background tints (10% opacity) with solid dots or text for badges."
-    ]
-  },
-  "visual_enhancers": {
-    "borders": "1px solid border (zinc-200 light / zinc-800 dark) everywhere for structure. No completely borderless floating cards.",
-    "shadows": "Light mode: shadow-sm for cards, shadow-lg for dropdowns/modals. Dark mode: rely on borders and subtle inner shadows, rarely use drop shadows.",
-    "radius": "rounded-lg for standard elements (buttons, inputs), rounded-xl for cards/modals. (ClickUp/Linear mix)",
-    "glassmorphism": "Used only for sticky topbar/nav: backdrop-blur-md bg-background/80 or bg-background/95. NEVER transparent."
-  },
-  "layouts": {
-    "app_shell": "Left Sidebar (w-64 expanded, w-16 collapsed) + Right Content Area. Topbar inside Right Content (h-14, sticky, borders).",
-    "dashboard_grid": "Bento style. grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4. 2-col span for charts, 1-col for metric cards.",
-    "kanban_board": "Horizontal flex container, overflow-x-auto, columns min-w-[300px].",
-    "list_view": "Data table style. No vertical borders. Subtle horizontal borders (border-b). Hover state on rows (hover:bg-muted/50)."
-  },
-  "component_instructions": {
-    "forms_inputs": "Use Shadcn UI. Height h-9 or h-10. Focus rings must be primary color ring-2 ring-offset-2.",
-    "buttons": "Primary: Solid indigo. Secondary: Outline or ghost. Avoid pill shapes, use rounded-md or rounded-lg.",
-    "avatars": "Small (w-6 h-6 or w-8 h-8), rounded-full, with border. If multiple, overlap them (-space-x-2).",
-    "modals_drawers": "Use slide-out drawers (Sheet) for Task Details to keep context without navigating away.",
-    "task_card": "Minimalist. Title, colored status dot, due date (red if overdue), assignee avatar, priority icon.",
-    "idea_card": "Must prominently feature an upvote button (left or top-right) with vote count."
-  },
-  "motion": {
-    "drag_drop": "Use robust libraries for drag-and-drop. Add scale-105 and shadow-xl to the dragging item. Highlight drop zones.",
-    "transitions": "Hover states: transition-colors duration-200. Sidebar collapse: transition-all duration-300 ease-in-out.",
-    "loading": "Skeleton loaders for dashboard widgets and task lists. No spinning loaders for main content blocks."
-  },
-  "media": {
-    "image_urls": {
-      "auth_background": {
-        "url": "https://images.pexels.com/photos/36988279/pexels-photo-36988279.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "Abstract minimalist architecture for the login page split-screen background."
-      },
-      "avatar_1": {
-        "url": "https://images.unsplash.com/photo-1740252117070-7aa2955b25f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBhdmF0YXIlMjBwb3J0cmFpdHxlbnwwfHx8fDE3ODcxMzM0ODl8MA&ixlib=rb-4.1.0&q=85",
-        "description": "3D style avatar for modern SaaS feel"
-      },
-      "avatar_2": {
-        "url": "https://images.unsplash.com/photo-1740252117013-4fb21771e7ca?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwyfHxwcm9mZXNzaW9uYWwlMjBhdmF0YXIlMjBwb3J0cmFpdHxlbnwwfHx8fDE3ODcxMzM0ODl8MA&ixlib=rb-4.1.0&q=85",
-        "description": "3D style cartoon avatar"
-      },
-      "avatar_3": {
-        "url": "https://images.pexels.com/photos/20157010/pexels-photo-20157010.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "Professional male avatar"
-      }
+    "forbidden_colors": ["#1B93A4", "#7351B7", "Generic Indigo/Blue as primary"],
+    "chart_palettes": ["#3F3F46", "#71717A", "#A1A1AA", "#D4D4D8"],
+    "status_colors": {
+      "success": "emerald-600",
+      "warning": "amber-500",
+      "danger": "rose-500",
+      "info": "blue-500"
     }
   },
-  "accessibility": {
-    "rules": [
-      "All interactive elements and key informational elements MUST include a data-testid attribute.",
-      "Ensure color contrast is APCA/WCAG compliant. Never rely on color alone to convey status.",
-      "Keyboard navigation (Cmd/Ctrl+K for global search) is mandatory."
-    ]
+  "spacing_and_density": {
+    "philosophy": "COMPACT and DENSE. Every pixel matters. Reduce unnecessary padding.",
+    "cards": "p-4 (not p-6). gap-4.",
+    "lists_and_tables": "h-9 or h-10 rows. py-1.5 px-3 for cells.",
+    "buttons": "h-8 px-3 text-xs or h-9 px-4 text-sm. rounded-md (6px radius).",
+    "badges": "h-5 px-1.5 text-[10px] rounded-sm.",
+    "sidebar": "w-56 or w-60. Items are h-8 with text-sm.",
+    "topbar": "h-12 or h-14 max."
   },
-  "universal_guidelines_for_main_agent": [
-    "Language: Entire UI MUST be in Turkish (Türkçe). Examples: 'Görevler' instead of 'Tasks', 'Fikirler' instead of 'Ideas', 'Ayarlar' instead of 'Settings'.",
-    "File Extensions: Use .js and .jsx files (NOT .tsx or .ts). Typescript is not configured, write pure JS/JSX.",
-    "Do not use generic centered text alignment on the main app container.",
-    "Use lucide-react for icons. Avoid emojis entirely.",
-    "Use sonner for toasts.",
-    "Implement a realistic top-bar with Breadcrumbs, Global Search (Cmd+K mockup), Notification Bell, and User Dropdown.",
-    "Make the 'Fikirler' (Ideas) board distinct with a clean upvote interaction design.",
-    "Ensure the application feels like a real product with robust empty states and mock data for all views (List, Kanban, Calendar, Gantt, Dashboard).",
-    "No AI-slop gradients. Keep backgrounds solid with subtle borders.",
-    "All headers/navs must have a background (e.g. bg-background/95 backdrop-blur). DO NOT use complete transparent background in header, overlays, any surface that has content under it.",
-    "Create depth through layered design elements with z-index hierarchy, crisp edges via semi-transparent borders.",
-    "Every interaction needs micro-animations - hover states, transitions, entrance animations. Static = dead."
+  "layouts": {
+    "app_shell": "Left collapsible sidebar (fixed) + Sticky Topbar. Main content area must have a max-width for ultra-wide screens or span gracefully using grid.",
+    "dashboard_grid": "Bento Protocol Mode B (High Density). grid-cols-1 md:grid-cols-4 lg:grid-cols-6. Tight gaps (gap-4).",
+    "kanban": "Ghost columns (transparent bg, thin dashed border if empty), Cards are solid with 1px border. Tightly packed (gap-2).",
+    "task_drawer": "Side sheet (w-[500px] to w-[600px]). Sticky header with actions, scrollable content, sticky footer for comments/budget summary.",
+    "settings_tabs": "Vertical tabs on desktop (left side), compact list. Horizontal scrollable on mobile."
+  },
+  "component_rules": {
+    "cards": "Cardless or Flat. NO soft drop shadows. Use 1px sharp borders (border-zinc-200 / border-zinc-800). bg-white dark:bg-[#121214].",
+    "inputs_and_dropdowns": "h-8 or h-9. bg-transparent. 1px border. Focus state must be a sharp 2px ring of primary color (zinc-900/zinc-50) or pure underline, no fuzzy shadows.",
+    "tables": "border-collapse. border-b border-zinc-100 dark:border-zinc-800/50. Hover state: subtle background shift.",
+    "modals_drawers": "Must use Glassmorphism for overlays (backdrop-blur-sm bg-black/40). Surface of the drawer must be solid, not glass.",
+    "charts": "Recharts. Use monochromatic palettes (shades of zinc/gray) with ONE accent color (e.g., Amber or Rose) to highlight anomalies/budgets. No grid lines, or extremely faint dashed grid lines."
+  },
+  "visual_enhancers": {
+    "glassmorphism": "Use for Sticky Topbar ONLY. backdrop-blur-xl bg-white/70 dark:bg-[#09090b]/70 + 1px bottom border.",
+    "noise_texture": "Apply a faint SVG noise texture (opacity 2-3%) fixed over the entire app shell background to create a premium tactile paper/matte feel.",
+    "tracing_beam": "Use subtle animated left-border highlight for active Sidebar items or Task list active rows."
+  },
+  "motion": {
+    "philosophy": "Snappy, purposeful, no bounce.",
+    "transitions": "Duration 150ms, ease-out. Target specific properties (e.g., transition-colors, transition-opacity), NEVER 'transition-all'.",
+    "hover_states": "Buttons and list items slightly darken/lighten background. NO scaling/translating up for dashboard items."
+  },
+  "accessibility": {
+    "contrast": "Ensure text contrast meets APCA/WCAG standards. Do not use pure gray on gray.",
+    "focus": "All interactive elements MUST have a visible focus ring.",
+    "testing": "All interactive and key informational elements MUST include a `data-testid` attribute (e.g., `data-testid=\"task-card-12\"`)."
+  },
+  "images_and_icons": {
+    "icons_library": "@phosphor-icons/react (Weight: Regular or Duotone) OR lucide-react with strokeWidth={1.5}. Must feel crisp and technical.",
+    "avatars": "Small, compact (w-6 h-6 or w-8 h-8). Use high-quality UI faces or crisp initials.",
+    "empty_states": "Do not use generic illustrations. Use crisp, monochromatic Phosphor/Lucide icons layered with subtle background circles and exact Turkish copy."
+  },
+  "instructions_to_main_agent": [
+    "Install required fonts (@fontsource/cabinet-grotesk, @fontsource/manrope, @fontsource/jetbrains-mono) via npm/yarn or add to Google Fonts import.",
+    "Update tailwind.config.js to set up the new typography scale, colors (zinc base), and custom border radiuses.",
+    "Refactor Shadcn UI components (button, card, input, table) to match the 'Compact & Premium' rules: remove default heavy shadows, decrease paddings, use sharp borders.",
+    "Implement the Layout Shell: w-56 Sidebar + h-12 Topbar. Ensure it responds well to mobile.",
+    "Apply Recharts styling constraints: monochromatic bars/lines with minimal axes.",
+    "Ensure the Turkish language is hardcoded or supported seamlessly in the UI.",
+    "DO NOT apply generic Vercel/Stripe look. Follow the Tactile Monochrome premium SaaS look.",
+    "DO NOT use transparent backgrounds for dropdowns or sticky headers without a blur and solid fallback."
   ],
-  "general_ui_ux_design_guidelines": [
-    "Adopt a 'Linear' mixed with 'ClickUp' aesthetic: High precision, distinct semantic coloring, and plenty of breathing room.",
-    "Avoid the generic SaaS blue; use Indigo as primary brand color for Fikirizm.",
-    "Organize complex data via progressive disclosure (use drawers/modals for task details instead of cluttered pages).",
-    "Dashboard should focus on actionable metrics: Open Tasks, Overdue, Upcoming Deadlines, and Workload Distribution.",
-    "Empty states should be illustrations or beautifully styled text blocks encouraging user action (e.g., 'İlk projenizi oluşturun')."
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this.",
+    "Create depth through layered design elements with z-index hierarchy, NOT fluffy drop shadows.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) only where instructed (Topbar).",
+    "You MUST NOT apply universal transition. Eg: `transition: all`.",
+    "You MUST NOT center align the app container, ie do not add `.App { text-align: center; }` in the css file.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons. Use Phosphor or Lucide.",
+    "Use 2-3x more spacing conceptually, but in this specific 'Compact' context, use tighter internal paddings with clear outer margins to define groups.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Use sonner for toasts, located in /app/src/components/ui/sonner.js/tsx",
+    "All interactive elements MUST include data-testid attribute in kebab-case format."
   ]
 }

@@ -70,6 +70,16 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## Redesign — İterasyon 10 (2026-06)
+- 🎨 **Kompakt & Premium yeniden tasarım** (design_agent blueprint → `/app/design_guidelines.json`). Genel jenerik indigo görünümden "Tactile Monochrome / Old Money Tech" estetiğine geçiş — token tabanlı olduğu için tüm uygulamaya yayıldı:
+  - **Tipografi**: Cabinet Grotesk (başlık) + Manrope (gövde) + JetBrains Mono (veri). Outfit/Inter kaldırıldı.
+  - **Renk**: Zinc bazlı monokrom; primary siyah (light) / beyaz (dark). Indigo/mor accent kaldırıldı. CSS değişkenleri (`index.css`) ve `tailwind.config.js` güncellendi.
+  - **Yoğunluk**: Sidebar w-64→w-56, topbar h-14→h-12, radius 0.6rem→0.375rem; yumuşak gölgeler düzleştirildi (keskin 1px border), topbar cam efekti (backdrop-blur-xl), %3-5 opaklıkta noise doku katmanı.
+  - **Grafikler**: Bütçe ve iş yükü grafikleri monokrom (chart-1..4 zinc tonları + amber accent).
+  - `text-white`→`text-primary-foreground` düzeltmeleri (koyu temada görünürlük). Rol rozet renkleri monokrom.
+- ✅ Açık + koyu tema, login, dashboard, kanban, bütçe ekran görüntüleriyle doğrulandı; frontend temiz derleniyor. (Görsel değişiklik; işlevsel akışlar değişmedi.)
+- 🧹 Aktivite temizliği genişletildi: silinmiş projeye işaret eden (dead-project) aktiviteler de migrasyonla temizleniyor.
+
 ## Fix — İterasyon 9 (2026-06)
 - 🐛 **Proje sahibinin (creator) çıkarılamaması**: Erişim tamamen `members` listesine bağlandı. Önceki kod `created_by`'ı hem `update_project`'te üye listesine zorla geri ekliyor hem de `can_access_project`/`accessible_project_ids`/`bootstrap` içinde ayrı erişim koşulu sağlıyordu → projeyi oluşturan üye listeden çıkarılamıyordu (örn. Girona'yı oluşturan mkemalkara). Artık oluşturan kişi de çıkarılabiliyor (oluştururken zaten üye listesine ekleniyor; Owner/Admin `is_privileged` ile tüm projeleri görmeye devam eder). Doğrulama (UI'nin kullandığı endpoint ile): üye kendi oluşturduğu projeden çıkarılınca bootstrap'te görünmüyor, `GET /tasks` 403.
 

@@ -59,7 +59,7 @@ export function CalendarView({ tasks, project, onOpenTask }) {
               {d && (
                 <>
                   <div className={cn("mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium tabular-nums",
-                    isToday(d) ? "bg-primary text-white" : "text-muted-foreground")}>{d}</div>
+                    isToday(d) ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>{d}</div>
                   <div className="space-y-1">
                     {(tasksByDay[d] || []).slice(0, 3).map((t) => {
                       const st = statusMap[t.status];

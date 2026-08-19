@@ -101,13 +101,13 @@ export function Sidebar({ collapsed, setCollapsed }) {
     <aside
       className={cn(
         "relative flex h-screen flex-col border-r border-border bg-card transition-all duration-300 ease-in-out",
-        collapsed ? "w-16" : "w-64"
+        collapsed ? "w-14" : "w-56"
       )}
       data-testid="sidebar"
     >
-      <div className="flex h-14 items-center gap-2.5 border-b border-border px-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
-          <Zap className="h-[18px] w-[18px] text-white" />
+      <div className="flex h-12 items-center gap-2.5 border-b border-border px-3">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary">
+          <Zap className="h-[16px] w-[16px] text-primary-foreground" />
         </div>
         {!collapsed && (
           <div className="min-w-0">
@@ -147,7 +147,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
           {!collapsed && <span className="flex-1">Aktivite</span>}
           {activityBadge > 0 && (
             <span
-              className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white"
+              className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground"
               data-testid="activity-badge"
             >
               {activityBadge > 99 ? "99+" : activityBadge}

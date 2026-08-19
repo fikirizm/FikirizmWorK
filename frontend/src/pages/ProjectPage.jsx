@@ -106,7 +106,7 @@ export default function ProjectPage() {
           {VIEWS.map((v) => (
             <button key={v.id} onClick={() => setView(v.id)} data-testid={`view-${v.id}`}
               className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                view === v.id ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+                view === v.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
               <v.icon className="h-4 w-4" /> <span className="hidden sm:inline">{v.label}</span>
             </button>
           ))}

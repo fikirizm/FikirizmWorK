@@ -123,8 +123,8 @@ export function BudgetView({ project, tasks = [] }) {
               <XAxis dataKey="name" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={70} tickFormatter={(v) => formatMoney(v, currency)} />
               <Tooltip formatter={(v) => formatMoney(v, currency)} cursor={{ fill: "hsl(var(--muted))" }} />
-              <Bar dataKey="Planlanan" fill="#a5b4fc" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="Gerçekleşen" fill="#6366F1" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="Planlanan" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Gerçekleşen" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

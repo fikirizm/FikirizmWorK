@@ -33,12 +33,15 @@ async def ensure_indexes():
 
 
 async def _backfill_activity_projects(org_id):
+    projects = await db.projects.find({"org_id": org_id}, {"_id": 0}).to_list(2000)
+    existing_pids = [p["id"] for p in projects]
+    # remove activities that point to a project that no longer exists (deleted projects)
+    await db.activities.delete_many({"org_id": org_id, "project_id": {"$ne": None, "$nin": existing_pids}})
     acts = await db.activities.find(
         {"org_id": org_id, "$or": [{"project_id": {"$exists": False}}, {"project_id": None}]},
         {"_id": 0}).to_list(5000)
     if not acts:
         return
-    projects = await db.projects.find({"org_id": org_id}, {"_id": 0}).to_list(2000)
     tasks = await db.tasks.find({"org_id": org_id}, {"_id": 0}).to_list(5000)
     ideas = await db.ideas.find({"org_id": org_id}, {"_id": 0}).to_list(2000)
     budget = await db.budget_items.find({"org_id": org_id}, {"_id": 0}).to_list(5000)

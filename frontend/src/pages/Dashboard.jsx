@@ -69,7 +69,7 @@ export default function Dashboard() {
     name: s.name, value: s.value, color: s.color || "#6366F1",
   }));
   const workloadData = Object.entries(data.workload || {}).map(([uid, count]) => ({
-    name: (memberMap[uid]?.name || "?").split(" ")[0], count, color: avatarColor(memberMap[uid]?.name || uid),
+    name: (memberMap[uid]?.name || "?").split(" ")[0], count,
   }));
 
   return (
@@ -120,9 +120,7 @@ export default function Dashboard() {
                 <XAxis dataKey="name" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                 <Tooltip cursor={{ fill: "hsl(var(--muted))" }} />
-                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                  {workloadData.map((e, i) => <Cell key={i} fill={e.color} />)}
-                </Bar>
+                <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="hsl(var(--chart-1))" />
               </BarChart>
             </ResponsiveContainer>
           )}

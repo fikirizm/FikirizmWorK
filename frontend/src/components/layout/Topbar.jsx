@@ -55,7 +55,7 @@ export function Topbar({ breadcrumb, onOpenSearch }) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-md">
+    <header className="sticky top-0 z-30 flex h-12 items-center gap-3 border-b border-border bg-background/70 px-4 backdrop-blur-xl">
       <div className="flex min-w-0 flex-1 items-center gap-2 text-sm">
         <MobileNav />
         {breadcrumb}

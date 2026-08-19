@@ -19,9 +19,9 @@ import { toast } from "sonner";
 import { formatApiError } from "@/lib/api";
 
 const ROLE_META = {
-  owner: { label: "Sahip", color: "#6366F1" },
-  admin: { label: "Yönetici", color: "#0EA5E9" },
-  member: { label: "Üye", color: "#71717A" },
+  owner: { label: "Sahip", color: "#18181B" },
+  admin: { label: "Yönetici", color: "#52525B" },
+  member: { label: "Üye", color: "#A1A1AA" },
 };
 
 export default function MembersPage() {
