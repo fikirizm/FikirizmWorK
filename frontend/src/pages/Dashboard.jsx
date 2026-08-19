@@ -45,11 +45,15 @@ export default function Dashboard() {
 
   const today = new Date().toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
   const metrics = [
-    { key: "acik", label: "Açık Görev", value: data.open_count, tone: "" },
-    { key: "geciken", label: "Geciken", value: data.overdue_count, tone: "text-rose-600 dark:text-rose-500" },
-    { key: "hafta", label: "Bu Hafta", value: data.upcoming_count, tone: "" },
-    { key: "tamamlanan", label: "Tamamlanan", value: data.done_count, tone: "text-muted-foreground" },
+    { key: "acik", label: "Açık Görev", value: data.open_count, tone: "", bar: "bg-foreground" },
+    { key: "geciken", label: "Geciken", value: data.overdue_count, tone: "text-rose-600 dark:text-rose-500", bar: "bg-rose-500" },
+    { key: "hafta", label: "Bu Hafta", value: data.upcoming_count, tone: "text-amber-600 dark:text-amber-500", bar: "bg-amber-500" },
+    { key: "tamamlanan", label: "Tamamlanan", value: data.done_count, tone: "", bar: "bg-emerald-500" },
   ];
+  const totalDen = data.total_count || 1;
+  const donePct = Math.round((data.done_count / totalDen) * 100);
+  const RING_C = 2 * Math.PI * 52;
+  const goTasks = () => navigate(`/proje/${data.my_tasks[0]?.project_id || allProjects[0]?.id || ""}`);
 
   const dist = (data.status_distribution || []).filter((s) => s.value > 0);
   const distTotal = dist.reduce((a, s) => a + s.value, 0) || 1;
@@ -61,35 +65,73 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto max-w-[1600px] px-6 py-8 sm:px-8" data-testid="overview-page">
-      {/* HERO */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: "easeOut" }}
-        className="flex flex-wrap items-end justify-between gap-3 pb-8"
+      {/* HERO COMMAND PANEL */}
+      <motion.section
+        initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: "easeOut" }}
+        className="relative mb-3 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 text-white"
         data-testid="overview-greeting"
       >
-        <h1 className="font-heading text-5xl font-light tracking-tighter sm:text-6xl">
-          Merhaba, {user?.name?.split(" ")[0]}.
-        </h1>
-        <div className="pb-1 text-right">
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{today}</p>
-          <p className="text-sm text-muted-foreground">{currentWorkspace?.name}</p>
+        <div className="pointer-events-none absolute inset-0 opacity-[0.14]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.5) 1px, transparent 0)", backgroundSize: "22px 22px" }} />
+        <div className="pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(245,158,11,0.22), transparent 70%)" }} />
+        <div className="relative flex flex-col gap-8 p-8 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-widest text-zinc-400">{today}</p>
+            <h1 className="mt-2 font-heading text-5xl font-light tracking-tighter sm:text-6xl">Merhaba, {user?.name?.split(" ")[0]}.</h1>
+            <p className="mt-3 max-w-md text-sm text-zinc-400">
+              <span className="text-white">{currentWorkspace?.name}</span> çalışma alanında{" "}
+              <span className="font-mono text-white">{data.open_count}</span> açık görev seni bekliyor.
+            </p>
+            <button onClick={goTasks} data-testid="hero-go-tasks"
+              className="mt-5 inline-flex items-center gap-1.5 rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition-colors hover:bg-amber-400">
+              Görevlerime git <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+            </button>
+          </div>
+          <div className="flex shrink-0 items-center gap-5">
+            <div className="relative h-[120px] w-[120px]">
+              <svg width="120" height="120" className="-rotate-90">
+                <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="8" />
+                <motion.circle
+                  cx="60" cy="60" r="52" fill="none" stroke="#F59E0B" strokeWidth="8" strokeLinecap="round"
+                  strokeDasharray={RING_C}
+                  initial={{ strokeDashoffset: RING_C }}
+                  animate={{ strokeDashoffset: RING_C * (1 - donePct / 100) }}
+                  transition={{ duration: 0.9, ease: "easeOut", delay: 0.2 }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="font-mono text-3xl font-light tabular-nums">{donePct}%</span>
+              </div>
+            </div>
+            <div className="hidden sm:block">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Tamamlanma</p>
+              <p className="mt-1 font-mono text-sm text-zinc-300">{data.done_count}/{data.total_count} görev</p>
+              <p className="mt-2 font-mono text-[11px] text-zinc-500">Geciken: <span className="text-rose-400">{data.overdue_count}</span></p>
+            </div>
+          </div>
         </div>
-      </motion.div>
+      </motion.section>
 
-      {/* METRIC TICKER */}
-      <div className="grid grid-cols-2 divide-x divide-y divide-border border border-border sm:grid-cols-4 sm:divide-y-0" data-testid="metric-ticker">
+      {/* METRIC TILES */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" data-testid="metric-ticker">
         {metrics.map((m, i) => (
           <motion.div
             key={m.key}
-            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.05 + i * 0.08, duration: 0.3 }}
-            className="px-5 py-5"
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 + i * 0.07, duration: 0.3 }}
+            className="group relative overflow-hidden rounded-lg border border-border bg-card p-5 transition-colors hover:border-foreground/25"
             data-testid={`metric-ticker-${m.key}`}
           >
             <p className="font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">{m.label}</p>
             <p className={cn("mt-2 font-mono text-4xl font-light tabular-nums sm:text-5xl", m.tone)}>
               {String(m.value).padStart(2, "0")}
             </p>
+            <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-muted">
+              <motion.div
+                className={cn("h-full rounded-full", m.bar)}
+                initial={{ width: 0 }} animate={{ width: `${Math.min(100, (m.value / totalDen) * 100)}%` }}
+                transition={{ delay: 0.3 + i * 0.07, duration: 0.6, ease: "easeOut" }}
+              />
+            </div>
           </motion.div>
         ))}
       </div>
@@ -97,7 +139,7 @@ export default function Dashboard() {
       {/* STATUS RIBBON */}
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.4 }}
-        className="border-x border-b border-border px-5 py-5"
+        className="mt-3 rounded-lg border border-border px-5 py-5"
         data-testid="status-ribbon"
       >
         <div className="mb-3 flex items-center justify-between">
@@ -130,9 +172,9 @@ export default function Dashboard() {
       </motion.div>
 
       {/* ASYMMETRIC SPLIT */}
-      <div className="grid grid-cols-1 lg:grid-cols-12">
+      <div className="mt-3 grid grid-cols-1 overflow-hidden rounded-lg border border-border lg:grid-cols-12">
         {/* MY TASKS — left */}
-        <div className="border-x border-b border-border lg:col-span-8" data-testid="my-tasks-panel">
+        <div className="border-b border-border lg:col-span-8 lg:border-b-0 lg:border-r" data-testid="my-tasks-panel">
           <div className="flex items-center justify-between border-b border-border px-5 py-3">
             <p className="font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Bana Atananlar</p>
             <p className="font-mono text-[10px] text-muted-foreground">{data.my_tasks.length}</p>
@@ -172,7 +214,7 @@ export default function Dashboard() {
         </div>
 
         {/* RIGHT column: workload + activity terminal */}
-        <div className="border-x border-b border-border lg:col-span-4 lg:border-l-0">
+        <div className="lg:col-span-4" data-testid="right-column">
           {/* Workload leaderboard */}
           <div className="border-b border-border" data-testid="workload-panel">
             <div className="border-b border-border px-5 py-3">

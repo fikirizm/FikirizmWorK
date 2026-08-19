@@ -71,14 +71,14 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
 ## Redesign — İterasyon 11 (2026-06)
-- 🎨 **Genel Bakış (Dashboard) "Command-Center / Editorial" yeniden tasarımı** (design_agent blueprint → `overview_page_redesign`). Jenerik "4 KPI kartı + donut + bar" düzeni kaldırıldı:
-  - Dev editorial selamlama (Cabinet Grotesk, text-6xl, font-light) + tarih.
-  - Metrik şeridi: 1px dikey çizgilerle bölünmüş tek satır; JetBrains Mono dev sayılar; "Geciken" rose vurgulu.
-  - Durum dağılımı: donut yerine tam genişlik monokrom **stacked ribbon** (foreground opaklık rampası) + mono yüzdeler.
-  - İş yükü: bar chart yerine **liderlik tablosu** (kare baş harf + inline mono progress + mono sayı).
-  - Bana Atananlar (sol lg:col-span-8) yoğun liste + hover translateX; Son Aktiviteler (sağ) **kare noktalı terminal timeline**, mono zaman damgaları.
-  - framer-motion kademeli giriş animasyonları. recharts bağımlılığı bu sayfadan kaldırıldı.
-- ✅ Açık + koyu tema ekran görüntüleriyle doğrulandı; temiz derleniyor. (Görsel değişiklik; `/api/dashboard` verisi/akışı değişmedi.)
+- 🎨 **Genel Bakış (Dashboard) "Command-Center / Editorial" yeniden tasarımı** — daha cesur/zengin sürüm:
+  - **Command panel hero**: koyu (zinc-950) tam genişlik slab + nokta-grid dokusu + amber radial ışıma; dev editorial selamlama; **amber tamamlanma halkası (SVG, animasyonlu)** done/total yüzdesi; amber "Görevlerime git" CTA.
+  - **Metrik kartları**: JetBrains Mono dev sayılar + renkli oran çubukları (Açık=foreground, Geciken=rose, Bu Hafta=amber, Tamamlanan=emerald), hover kenarlık.
+  - Durum dağılımı: donut yerine monokrom **stacked ribbon** + mono yüzdeler.
+  - İş yükü **liderlik tablosu** (kare baş harf + inline progress + mono sayı).
+  - Bana Atananlar (sol) yoğun liste + hover translateX; Son Aktiviteler (sağ) **kare noktalı terminal timeline**.
+  - framer-motion kademeli giriş + halka/çubuk animasyonları. recharts bu sayfadan kaldırıldı.
+- ✅ Açık + koyu tema tam sayfa ekran görüntüleriyle doğrulandı; temiz derleniyor. (Görsel; `/api/dashboard` akışı değişmedi.)
 
 ## Redesign — İterasyon 10 (2026-06)
 - 🎨 **Kompakt & Premium yeniden tasarım** (design_agent blueprint → `/app/design_guidelines.json`). Genel jenerik indigo görünümden "Tactile Monochrome / Old Money Tech" estetiğine geçiş — token tabanlı olduğu için tüm uygulamaya yayıldı:
