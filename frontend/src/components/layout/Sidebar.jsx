@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAppData } from "@/context/AppData";
 import { useAuth } from "@/context/AuthContext";
 import API from "@/lib/api";
-import { WMark } from "@/components/WMark";
+import { WMark, Logo } from "@/components/WMark";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -106,14 +106,8 @@ export function Sidebar({ collapsed, setCollapsed }) {
       )}
       data-testid="sidebar"
     >
-      <div className="flex h-12 items-center gap-2.5 border-b border-border px-3">
-        <WMark size={28} />
-        {!collapsed && (
-          <div className="min-w-0">
-            <p className="truncate font-heading text-sm font-bold leading-tight tracking-tight">Fikirizm Work</p>
-            <p className="truncate text-xs text-muted-foreground">{org?.name || "Organizasyon"}</p>
-          </div>
-        )}
+      <div className="flex h-12 items-center border-b border-border px-3">
+        {collapsed ? <WMark size={28} /> : <Logo className="h-6" chip />}
       </div>
 
       {!collapsed && (

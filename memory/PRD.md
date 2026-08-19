@@ -70,6 +70,11 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## İterasyon 16 (2026-06) — Gerçek logo + Login sadeleştirme
+- Gerçek "fikirizm work" wordmark logosu eklendi (`/public/brand-logo.webp`) ve W ikonu (`/public/brand-icon.webp`). `WMark` artık gerçek ikonu, yeni `Logo` bileşeni wordmark'ı gösteriyor (koyu zeminler için `chip` beyaz arka plan seçeneği).
+- Kullanım: Login sol panel, Sidebar başlığı, Register, AcceptInvite, Topbar mobil menü başlığı.
+- Login sol panelindeki pazarlama metinleri ve özellik bağlantıları kaldırıldı — sade fotoğraf + logo.
+
 ## İterasyon 15 (2026-06) — Marka (Fikirizm Work)
 - **Yeniden adlandırma**: "Fikirizm Cloud" → **"Fikirizm Work"** (Sidebar, Login, Register, AcceptInvite, Topbar, tarayıcı başlığı, mail placeholder).
 - **Logo/İkon**: Zap yerine mor daireli beyaz **W** ikonu (`WMark` bileşeni, `#5859a3`). Sidebar + tüm auth sayfalarında.

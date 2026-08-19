@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
-import { WMark } from "@/components/WMark";
+import { Logo } from "@/components/WMark";
 
 export default function AcceptInvite() {
   const [params] = useSearchParams();
@@ -53,10 +53,7 @@ export default function AcceptInvite() {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm fik-fade-up">
-        <div className="mb-6 flex items-center gap-2">
-          <WMark size={36} />
-          <span className="font-heading text-lg font-bold tracking-tight">Fikirizm Work</span>
-        </div>
+        <div className="mb-6"><Logo className="h-9" chip /></div>
 
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /> Davet kontrol ediliyor...</div>

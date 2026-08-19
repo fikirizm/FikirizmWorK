@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/s
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { UserAvatar } from "@/components/UserAvatar";
+import { Logo } from "@/components/WMark";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuLabel, DropdownMenuSeparator,
@@ -26,7 +27,9 @@ function MobileNav() {
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0">
-        <SheetTitle className="border-b border-border px-4 py-3 font-heading">Fikirizm Work</SheetTitle>
+        <SheetTitle className="flex items-center border-b border-border px-4 py-3">
+          <Logo className="h-6" chip />
+        </SheetTitle>
         <nav className="flex flex-col gap-1 p-3">
           <NavLink to="/panel" className={link} data-testid="mnav-dashboard">Genel Bakış</NavLink>
           <NavLink to="/fikirler" className={link} data-testid="mnav-ideas">Fikirler</NavLink>

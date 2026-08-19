@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { WMark } from "@/components/WMark";
+import { Logo } from "@/components/WMark";
 
 const AUTH_BG = "https://images.pexels.com/photos/36988279/pexels-photo-36988279.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940";
 
@@ -43,10 +43,7 @@ export default function Register() {
       <div className="relative hidden lg:flex lg:w-1/2 flex-col justify-between overflow-hidden bg-zinc-950 p-12 text-white">
         <img src={AUTH_BG} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-transparent" />
-        <div className="relative flex items-center gap-2.5">
-          <WMark size={36} />
-          <span className="font-heading text-lg font-bold tracking-tight">Fikirizm Work</span>
-        </div>
+        <div className="relative"><Logo className="h-10" chip /></div>
         <div className="relative space-y-4">
           <h2 className="font-heading text-4xl font-bold leading-tight tracking-tight">
             Ekibinizi<br />hemen kurun.

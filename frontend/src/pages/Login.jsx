@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { WMark } from "@/components/WMark";
+import { Logo } from "@/components/WMark";
 
 const AUTH_BG = "https://images.pexels.com/photos/36988279/pexels-photo-36988279.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940";
 
@@ -15,23 +15,10 @@ function BrandPanel() {
     <div className="relative hidden lg:flex lg:w-1/2 flex-col justify-between overflow-hidden bg-zinc-950 p-12 text-white">
       <img src={AUTH_BG} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
       <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-transparent" />
-      <div className="relative flex items-center gap-2.5">
-        <WMark size={36} />
-        <span className="font-heading text-lg font-bold tracking-tight">Fikirizm Work</span>
+      <div className="relative">
+        <Logo className="h-10" chip />
       </div>
-      <div className="relative space-y-4">
-        <h2 className="font-heading text-4xl font-bold leading-tight tracking-tight">
-          Ekibinizin işini<br />tek yerden yönetin.
-        </h2>
-        <p className="max-w-md text-zinc-300">
-          Görevler, panolar, fikirler ve gerçek zamanlı iş birliği — profesyonel bir SaaS deneyimiyle.
-        </p>
-        <div className="flex gap-6 pt-4 text-sm text-zinc-400">
-          <span>Liste & Kanban</span>
-          <span>Takvim & Zaman Çizelgesi</span>
-          <span>Fikir Panosu</span>
-        </div>
-      </div>
+      <div />
     </div>
   );
 }
@@ -68,9 +55,8 @@ export default function Login() {
       <BrandPanel />
       <div className="flex w-full flex-col justify-center px-6 py-12 lg:w-1/2 lg:px-20">
         <div className="mx-auto w-full max-w-sm fik-fade-up">
-          <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <WMark size={32} />
-            <span className="font-heading font-bold">Fikirizm Work</span>
+          <div className="mb-8 lg:hidden">
+            <Logo className="h-9" />
           </div>
           <h1 className="font-heading text-3xl font-bold tracking-tight">Giriş yap</h1>
           <p className="mt-2 text-sm text-muted-foreground">
