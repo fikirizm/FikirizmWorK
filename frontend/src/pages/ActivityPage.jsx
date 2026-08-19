@@ -73,7 +73,7 @@ export default function ActivityPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-3xl rounded-xl border border-border bg-card px-5 py-2">
+      <div className="w-full rounded-xl border border-border bg-card px-5 py-2">
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Aktivite yok.</p>
         ) : (

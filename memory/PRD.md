@@ -70,6 +70,10 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## İterasyon 14 (2026-06) — Yerleşim
+- Aktivite sayfası tam sayfa genişliğine alındı (liste `w-full`).
+- Sol menüden "Ayarlar" kaldırıldı (erişim: sağ üst profil menüsü > Ayarlar). Ayarlar sayfası tam genişliğe (`max-w-[1600px]`) alındı.
+
 ## İterasyon 13 (2026-06) — Bug + Anlamlı Genel Bakış + Aktivite
 - 🐛 **Proje silinemiyor bug'ı**: Proje Ayarları'nda hiç silme aksiyonu yoktu. Eklendi — owner/admin için "Projeyi sil" tehlike bölgesi + iki adımlı onay (`DELETE /api/projects/{id}`). Backend'e `is_privileged` yetki kontrolü eklendi; silmede görev + bütçe + aktivite kayıtları da temizleniyor. testing_agent (iteration_8) %100 doğruladı (silme akışı + üye yetki engeli).
 - ✨ **Durum Dağılımı → "Proje İlerlemesi"**: Anlamsız durum sayacı yerine aksiyon alınabilir panel — her proje: tamamlanma %, ilerleme çubuğu, "X/Y tamam · Z açık", "N geciken" rozeti; dikkat gerektirenler (geciken/açık) önce sıralı; karta tıklayınca proje açılır. Backend `GET /api/dashboard` yeni `project_progress` alanı (görevsiz projeler gizlenir).

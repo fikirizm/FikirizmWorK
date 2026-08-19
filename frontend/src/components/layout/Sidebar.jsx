@@ -154,10 +154,6 @@ export function Sidebar({ collapsed, setCollapsed }) {
             </span>
           )}
         </NavLink>
-        <NavLink to="/ayarlar" className={linkCls} data-testid="nav-settings">
-          <Settings className="h-[18px] w-[18px] shrink-0" />
-          {!collapsed && "Ayarlar"}
-        </NavLink>
 
         <div className="mt-4 mb-1 flex items-center justify-between px-3">
           {!collapsed && (

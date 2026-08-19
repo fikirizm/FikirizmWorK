@@ -26,7 +26,7 @@ export default function SettingsPage() {
   }, [setBreadcrumb]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-6">
+    <div className="mx-auto max-w-[1600px] space-y-6 px-6 py-8 sm:px-8">
       <div>
         <h1 className="font-heading text-3xl font-light tracking-tighter sm:text-4xl">Ayarlar</h1>
         <p className="mt-1 text-sm text-muted-foreground">Profil, bildirim ve çalışma alanı ayarlarınızı yönetin.</p>
