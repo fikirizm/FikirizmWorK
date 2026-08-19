@@ -51,7 +51,7 @@ def can_access_project(user, project):
         return False
     if is_privileged(user):
         return True
-    return user["user_id"] in project.get("members", []) or project.get("created_by") == user["user_id"]
+    return user["user_id"] in project.get("members", [])
 
 
 def can_edit_budget(user, project):
@@ -67,7 +67,7 @@ async def accessible_project_ids(user):
         return None  # None => all projects in org
     projs = await db.projects.find(
         {"org_id": user["org_id"]}, {"_id": 0, "id": 1, "members": 1, "created_by": 1}).to_list(2000)
-    return [p["id"] for p in projs if user["user_id"] in p.get("members", []) or p.get("created_by") == user["user_id"]]
+    return [p["id"] for p in projs if user["user_id"] in p.get("members", [])]
 
 
 def can_see_task(user, task):
@@ -280,7 +280,7 @@ async def bootstrap(user: dict = Depends(get_current_user)):
     if is_privileged(user):
         projects = all_projects
     else:
-        projects = [p for p in all_projects if user["user_id"] in p.get("members", []) or p.get("created_by") == user["user_id"]]
+        projects = [p for p in all_projects if user["user_id"] in p.get("members", [])]
     members = await db.users.find({"org_id": org_id}, {"_id": 0, "password_hash": 0}).to_list(200)
     return {"org": org, "workspaces": workspaces, "projects": projects, "members": members,
             "user": user, "templates": {k: {"label": v["label"], "icon": v["icon"]} for k, v in TEMPLATES.items()}}
@@ -328,7 +328,7 @@ async def update_project(project_id: str, body: ProjectUpdate, user: dict = Depe
         for k in priv_only:
             updates.pop(k, None)
     if "members" in updates:
-        updates["members"] = list(dict.fromkeys(updates["members"] + [proj.get("created_by")]))
+        updates["members"] = list(dict.fromkeys(updates["members"]))
         added = [m for m in updates["members"] if m not in proj.get("members", [])]
     else:
         added = []

@@ -70,6 +70,9 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## Fix — İterasyon 9 (2026-06)
+- 🐛 **Proje sahibinin (creator) çıkarılamaması**: Erişim tamamen `members` listesine bağlandı. Önceki kod `created_by`'ı hem `update_project`'te üye listesine zorla geri ekliyor hem de `can_access_project`/`accessible_project_ids`/`bootstrap` içinde ayrı erişim koşulu sağlıyordu → projeyi oluşturan üye listeden çıkarılamıyordu (örn. Girona'yı oluşturan mkemalkara). Artık oluşturan kişi de çıkarılabiliyor (oluştururken zaten üye listesine ekleniyor; Owner/Admin `is_privileged` ile tüm projeleri görmeye devam eder). Doğrulama (UI'nin kullandığı endpoint ile): üye kendi oluşturduğu projeden çıkarılınca bootstrap'te görünmüyor, `GET /tasks` 403.
+
 ## Fixes & Notes — İterasyon 8 (2026-06)
 - 🐛 **Erişim kontrolü (üye çıkarma)**: Bir üye projeden çıkarıldığında sidebar'ının güncellenmemesi düzeltildi. `AppData` bootstrap sorgusuna `refetchInterval: 20s` + `refetchOnWindowFocus` eklendi; çıkarılan üye ~20sn içinde (veya yeniden girişte) projeyi görmez, `GET /tasks?project_id=` 403 döner. (Backend zaten doğru filtreliyordu.)
 - 🐛 **Aktivite akışı sızıntısı**: Aktivitelere `project_id` eklendi; `GET /api/activities` ve dashboard `recent_activities` yetkisiz kullanıcılar için erişilebilir projelere göre filtreleniyor (Owner/Admin hepsini görür). Başlangıç migrasyonu (`_backfill_activity_projects`) eski aktivitelere `project_id` doldurur ve silinmiş varlıklara ait sahipsiz aktiviteleri temizler. Doğrulama: Owner 17, Üye Mert 14 aktivite (Girona/Operasyon gizli kaldı).
