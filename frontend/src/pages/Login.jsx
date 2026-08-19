@@ -17,8 +17,8 @@ function googleLogin() {
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("ingobiosport@gmail.com");
-  const [password, setPassword] = useState("Fikirizm2025!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async (e) => {

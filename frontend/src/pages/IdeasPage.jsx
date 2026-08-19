@@ -22,7 +22,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  ChevronUp, MessageSquare, Plus, Lightbulb, Send, ArrowRightLeft, Sparkles,
+  ChevronUp, MessageSquare, Plus, Lightbulb, Send, ArrowRightLeft, Sparkles, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -169,6 +169,9 @@ function IdeaDrawer({ idea, open, onOpenChange, onChanged }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [comment, setComment] = useState("");
+  const [confirmDel, setConfirmDel] = useState(false);
+
+  useEffect(() => { if (!open) setConfirmDel(false); }, [open]);
 
   const { data: comments = [] } = useQuery({
     queryKey: ["idea-comments", idea?.id],
@@ -183,6 +186,17 @@ function IdeaDrawer({ idea, open, onOpenChange, onChanged }) {
 
   if (!idea) return null;
   const voted = (idea.upvotes || []).includes(user?.user_id);
+  const isPriv = user?.role === "owner" || user?.role === "admin";
+  const canDelete = isPriv || idea.created_by === user?.user_id;
+
+  const del = async () => {
+    try {
+      await API.delete(`/ideas/${idea.id}`);
+      toast.success("Fikir silindi");
+      onChanged?.();
+      onOpenChange(false);
+    } catch (e) { toast.error(e.response?.data?.detail || "Silinemedi"); }
+  };
 
   const changeStatus = async (status) => {
     await API.patch(`/ideas/${idea.id}`, { status });
@@ -241,6 +255,20 @@ function IdeaDrawer({ idea, open, onOpenChange, onChanged }) {
             <Button className="w-full" variant="secondary" onClick={convert} data-testid="convert-idea-btn">
               <ArrowRightLeft className="mr-2 h-4 w-4" /> Göreve çevir
             </Button>
+          )}
+
+          {canDelete && (
+            !confirmDel ? (
+              <Button className="w-full" variant="outline" onClick={() => setConfirmDel(true)} data-testid="delete-idea-btn">
+                <Trash2 className="mr-2 h-4 w-4 text-destructive" /> <span className="text-destructive">Fikri sil</span>
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2">
+                <span className="flex-1 text-sm text-destructive">Bu fikri silmek istediğinize emin misiniz?</span>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmDel(false)}>Vazgeç</Button>
+                <Button size="sm" variant="destructive" onClick={del} data-testid="delete-idea-confirm-btn">Sil</Button>
+              </div>
+            )
           )}
 
           <div className="space-y-3 border-t border-border pt-4">

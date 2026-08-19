@@ -20,6 +20,7 @@ class SessionBody(BaseModel):
 class WorkspaceBody(BaseModel):
     name: str
     description: Optional[str] = ""
+    members: Optional[List[str]] = []
 
 
 class ProjectBody(BaseModel):
@@ -59,6 +60,15 @@ class NotifPrefsBody(BaseModel):
     budget: Optional[bool] = None
     reminder: Optional[bool] = None
     muted_projects: Optional[List[str]] = None
+    in_app_assign: Optional[bool] = None
+    in_app_comment: Optional[bool] = None
+    in_app_vote: Optional[bool] = None
+    in_app_idea: Optional[bool] = None
+
+
+class ChangePasswordBody(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=6)
 
 
 class ProfileUpdate(BaseModel):
@@ -72,6 +82,7 @@ class OrgUpdate(BaseModel):
 class WorkspaceUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    members: Optional[List[str]] = None
 
 
 class ProjectUpdate(BaseModel):

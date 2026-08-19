@@ -1,0 +1,48 @@
+{
+  "summary": "Iteration 10 testing: DELETE /api/ideas (403 for non-owner, 200 for owner/creator, 404 for missing), POST /api/auth/change-password (wrong current -> 400, same new==current -> 400, valid change -> 200 and login with new pw works, restored back), PUT/GET /api/settings/notifications (in_app_* keys persist), in_app_assign=false suppresses assign notification, POST /api/workspaces + GET /api/bootstrap reflects new workspace, PATCH /api/tasks parent_id nest/promote incl. one-level clamp and null-clears-parent, PATCH start_date/due_date. UI smoke: workspace-switcher-btn + new-workspace-btn + workspace-name-input + workspace-save-btn work; Ideas drawer shows delete-idea-btn + delete-idea-confirm-btn; Settings has pw-current/new/confirm/save inputs; Bildirimler tab has notif-in_app_assign/comment/vote/idea switches + notif-save-btn; Gantt view has gantt-new-task-btn, gantt-assign-date-* on undated task, and after click a gantt-bar-* rendered (Tarih ata flow verified end-to-end). Backend 15/16 tests passed.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/workspaces", "issue": "Missing privilege check: any authenticated member/regular user can create a workspace. Frontend hides new-workspace-btn for non-privileged users but backend accepts the request (returns 200). Expected 403 per is_privileged(user) gate, matching PATCH /api/workspaces/{id}.", "priority": "HIGH"},
+      {"endpoint": "PATCH /api/organization (missing)", "issue": "update_organization at routes.py L1339 has NO @router decorator. It sits directly after the change_password return statement (L1338) — the function is defined but never registered as a route, so the Ayarlar > Organizasyon 'Güncelle' action cannot hit the backend. Add @router.patch(\"/organization\") above async def update_organization.", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Workspace create dialog & Idea drawer", "issues": ["DialogContent missing aria-describedby / <Description> — a11y warning in console for these Radix dialogs. Not a blocker."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration10.py",
+    "/app/test_reports/pytest/iter10.xml"
+  ],
+  "action_items": [
+    "Add is_privileged(user) check + 403 to POST /api/workspaces (parity with PATCH /api/workspaces/{id}).",
+    "Re-add the missing @router.patch('/organization') decorator above update_organization in routes.py (currently orphaned right after change_password's return line).",
+    "Consider adding aria-describedby / Description to workspace-create Dialog and Idea drawer Dialog to remove Radix a11y warnings.",
+    "Seed script only re-seeds the OWNER password on subsequent startups; demo users (elif/mert/zeynep) are NOT re-created or password-reset if missing. In this preview env those users did not exist; testing agent had to insert them directly to run permission tests. Consider making seed idempotent for demo users too (upsert with password refresh)."
+  ],
+  "critical_code_review_comments": [
+    "routes.py L1338-1339: update_organization function is defined without a @router decorator right after change_password's return — the endpoint is silently missing. Any UI trying to PATCH the org name will 404/405. HIGH severity, easy fix.",
+    "routes.py L298 create_workspace: no privilege gate — mismatched with the frontend rule that only owner/admin should create workspaces. Backend must enforce.",
+    "routes.py L461-470 update_task parent_id handling: correctly uses data-key check to distinguish None-clear vs unset, and clamps to grandparent when nesting under a subtask — verified via API tests.",
+    "routes.py L497-503 promote_subtask: sets parent_id=None and appends to end of its status column (order=count). Works. Consider also recomputing order of remaining siblings for cleanliness (optional).",
+    "routes.py L150 create_notification correctly reads in_app_<type>; verified suppression when in_app_assign=false.",
+    "routes.py L666-676 delete_idea: owner/admin/creator gate correct; also cleans up comments and broadcasts."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration10.py (new backend test suite)"
+  ],
+  "success_rate": {
+    "backend": "15/16 = 93.75% (only failure is a genuine bug: POST /api/workspaces accepts members)",
+    "frontend": "100% of iteration-10 selectors present and functional (workspace switcher/create, idea delete btn+confirm, password inputs, in-app notif switches, gantt new-task/assign-date, Tarih ata -> gantt-bar renders)"
+  },
+  "test_credentials": "Owner ingobiosport@gmail.com/Fikirizm2025! verified. Demo users elif@fikirizm.com, mert@fikirizm.com, zeynep@fikirizm.com were MISSING from this preview DB — testing agent inserted them with Demo2025! and added memberships to workspace 'BikeAway'. Admin password was rotated during change-password test then restored.",
+  "seed_data_creation": "Inserted 3 demo users (elif admin, mert member, zeynep member) with Demo2025! + workspace memberships in workspace 'BikeAway' (org 'BikeAway'). Created & left behind a few QA workspaces named 'QA Test WS <hex>' / 'QA UI WS <n>' (no delete API). Test tasks/ideas prefixed TEST_ were cleaned up by teardown.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Preview env now has demo users elif/mert/zeynep with Demo2025! password + memberships in the sole workspace 'BikeAway' (org 'BikeAway'). Only project 'Girona Gezisi 2026' exists (1 task 'Tarih Planlaması'). Multiple leftover 'QA Test WS *' + 'QA UI WS *' workspaces exist (no delete API). If validating the fix for POST /api/workspaces auth, use mert@fikirizm.com (role=member) — should get 403 after fix. If validating update_organization fix, PATCH /api/organization {name: 'X'} with owner token should return the org. Backend test file: /app/backend/tests/test_iteration10.py; run via `pytest backend/tests/test_iteration10.py -v` (pytest.ini forces -n 2 loadscope which is fine).",
+  "rca of the issue": "N/A for iteration-10 features (all worked). RCA for the two backend bugs discovered: (1) POST /api/workspaces was written without an is_privileged gate — mirror of PATCH /api/workspaces/{id} was likely intended; (2) update_organization function body was pasted immediately after change_password's `return {\"ok\": True}` line and its @router.patch('/organization') decorator was lost (or never added) — a lint pass would not catch this because the function is syntactically valid Python, just never wired up. Recommend adding a smoke test that hits every @router.<method> path with a HEAD/OPTIONS during CI to catch orphaned handlers."
+}

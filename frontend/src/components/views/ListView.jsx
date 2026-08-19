@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from "react";
-import { Reorder } from "framer-motion";
 import API from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppData } from "@/context/AppData";
@@ -11,28 +10,36 @@ import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { GripVertical, ArrowUpDown, Trash2, X, CheckSquare } from "lucide-react";
+import { GripVertical, ArrowUpDown, Trash2, X, CheckSquare, CornerDownRight, ArrowUpLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-export function ListView({ tasks, project, onOpenTask }) {
+export function ListView({ tasks, allTasks = [], project, onOpenTask }) {
   const queryClient = useQueryClient();
   const { memberMap } = useAppData();
   const statuses = project?.statuses || [];
   const statusMap = Object.fromEntries(statuses.map((s) => [s.id, s]));
   const [sortKey, setSortKey] = useState("order");
   const [selected, setSelected] = useState([]);
-  const [items, setItems] = useState(tasks);
-
-  useEffect(() => { setItems(tasks); }, [tasks]);
+  const [dragId, setDragId] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null); // { id, mode }
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["tasks", project.id] });
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
   };
 
+  const subtasksOf = useMemo(() => {
+    const map = {};
+    allTasks.forEach((t) => {
+      if (t.parent_id) (map[t.parent_id] = map[t.parent_id] || []).push(t);
+    });
+    Object.values(map).forEach((arr) => arr.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+    return map;
+  }, [allTasks]);
+
   const sorted = useMemo(() => {
-    const arr = [...items];
+    const arr = [...tasks];
     if (sortKey === "priority") {
       const rank = { urgent: 0, high: 1, medium: 2, low: 3 };
       arr.sort((a, b) => rank[a.priority] - rank[b.priority]);
@@ -40,19 +47,13 @@ export function ListView({ tasks, project, onOpenTask }) {
       arr.sort((a, b) => (a.due_date || "9").localeCompare(b.due_date || "9"));
     } else if (sortKey === "status") {
       arr.sort((a, b) => a.status.localeCompare(b.status));
+    } else {
+      arr.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     }
     return arr;
-  }, [items, sortKey]);
+  }, [tasks, sortKey]);
 
-  const persistOrder = async (ordered) => {
-    setItems(ordered);
-    await Promise.all(ordered.map((t, i) => API.patch(`/tasks/${t.id}`, { order: i })));
-  };
-
-  const toggleSel = (id, e) => {
-    e?.stopPropagation();
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-  };
+  const canDrag = sortKey === "order";
 
   const bulkStatus = async (status) => {
     await API.post("/tasks/bulk", { ids: selected, updates: { status } });
@@ -65,41 +66,123 @@ export function ListView({ tasks, project, onOpenTask }) {
     toast.success("Görevler silindi");
   };
 
-  const canReorder = sortKey === "order";
+  const promote = async (t, e) => {
+    e?.stopPropagation();
+    await API.post(`/tasks/${t.id}/promote`);
+    toast.success("Ana göreve çıkarıldı");
+    invalidate();
+  };
 
-  const renderRow = (t) => {
+  // ----- native drag & drop (nest + reorder) -----
+  const onDragStart = (e, t) => {
+    if (!canDrag) return;
+    setDragId(t.id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+  const onDragOver = (e, target) => {
+    if (!canDrag || !dragId || dragId === target.id) return;
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const draggedHasSubs = (subtasksOf[dragId] || []).length > 0;
+    const targetIsTop = !target.parent_id;
+    let mode;
+    if (y < rect.height * 0.3) mode = "before";
+    else if (y > rect.height * 0.7) mode = "after";
+    else mode = targetIsTop && !draggedHasSubs ? "child" : (y < rect.height / 2 ? "before" : "after");
+    setDropTarget({ id: target.id, mode });
+  };
+  const onDragEnd = () => { setDragId(null); setDropTarget(null); };
+
+  const onDrop = async (e, target) => {
+    if (!canDrag || !dragId || !dropTarget || dragId === target.id) { onDragEnd(); return; }
+    e.preventDefault();
+    const dragged = allTasks.find((t) => t.id === dragId);
+    const mode = dropTarget.mode;
+    onDragEnd();
+    if (!dragged) return;
+    try {
+      if (mode === "child") {
+        await API.patch(`/tasks/${dragId}`, { parent_id: target.id });
+        toast.success("Alt görev yapıldı");
+      } else {
+        // reorder into target's sibling group
+        const newParent = target.parent_id || null;
+        const siblings = (newParent ? subtasksOf[newParent] || [] : sorted).filter((t) => t.id !== dragId);
+        const idx = siblings.findIndex((t) => t.id === target.id);
+        const insertAt = mode === "after" ? idx + 1 : idx;
+        siblings.splice(insertAt, 0, dragged);
+        if ((dragged.parent_id || null) !== newParent) {
+          if (newParent) await API.patch(`/tasks/${dragId}`, { parent_id: newParent });
+          else await API.post(`/tasks/${dragId}/promote`);
+        }
+        await Promise.all(siblings.map((t, i) => API.patch(`/tasks/${t.id}`, { order: i })));
+      }
+      invalidate();
+    } catch { toast.error("Taşınamadı"); }
+  };
+
+  const Row = ({ t, depth }) => {
     const assignees = (t.assignees || []).map((id) => memberMap[id]).filter(Boolean);
     const overdue = isOverdue(t.due_date) && t.status !== doneStatusId(statuses);
     const st = statusMap[t.status];
+    const isDropChild = dropTarget?.id === t.id && dropTarget?.mode === "child";
+    const showBefore = dropTarget?.id === t.id && dropTarget?.mode === "before";
+    const showAfter = dropTarget?.id === t.id && dropTarget?.mode === "after";
     return (
-      <>
-        <div className="flex w-8 shrink-0 items-center justify-center" onClick={(e) => e.stopPropagation()}>
-          <Checkbox checked={selected.includes(t.id)} onCheckedChange={() => setSelected((s) => s.includes(t.id) ? s.filter((x) => x !== t.id) : [...s, t.id])} data-testid={`list-select-${t.id}`} />
-        </div>
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          {canReorder && <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground/40" />}
-          <span className="truncate text-sm font-medium">{t.title}</span>
-        </div>
-        <div className="hidden w-32 shrink-0 sm:block">
-          {st && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: st.color }}>
-              <StatusDot color={st.color} /> {st.name}
-            </span>
+      <div className="relative">
+        {showBefore && <div className="absolute left-0 right-0 top-0 z-10 h-0.5 bg-primary" />}
+        {showAfter && <div className="absolute bottom-0 left-0 right-0 z-10 h-0.5 bg-primary" />}
+        <div
+          draggable={canDrag}
+          onDragStart={(e) => onDragStart(e, t)}
+          onDragOver={(e) => onDragOver(e, t)}
+          onDrop={(e) => onDrop(e, t)}
+          onDragEnd={onDragEnd}
+          onClick={() => onOpenTask(t.id)}
+          className={cn(
+            "flex cursor-pointer items-center gap-2 border-b border-border px-3 py-2.5 last:border-0 hover:bg-muted/50",
+            isDropChild && "bg-primary/10 ring-1 ring-inset ring-primary/40",
+            dragId === t.id && "opacity-40"
           )}
+          style={{ paddingLeft: depth ? 12 + depth * 24 : undefined }}
+          data-testid={`list-row-${t.id}`}
+        >
+          <div className="flex w-8 shrink-0 items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <Checkbox checked={selected.includes(t.id)} onCheckedChange={() => setSelected((s) => s.includes(t.id) ? s.filter((x) => x !== t.id) : [...s, t.id])} data-testid={`list-select-${t.id}`} />
+          </div>
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            {canDrag && <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground/40" />}
+            {depth > 0 && <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />}
+            <span className="truncate text-sm font-medium">{t.title}</span>
+            {depth > 0 && (
+              <button onClick={(e) => promote(t, e)} title="Ana göreve çıkar" data-testid={`promote-${t.id}`}
+                className="ml-1 hidden shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground group-hover:inline-flex">
+                <ArrowUpLeft className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="hidden w-32 shrink-0 sm:block">
+            {st && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: st.color }}>
+                <StatusDot color={st.color} /> {st.name}
+              </span>
+            )}
+          </div>
+          <div className="hidden w-24 shrink-0 md:block"><PriorityBadge priority={t.priority} /></div>
+          <div className="hidden w-24 shrink-0 lg:block">
+            {t.due_date && <span className={cn("text-xs", overdue ? "text-destructive font-medium" : "text-muted-foreground")}>{formatDate(t.due_date)}</span>}
+          </div>
+          <div className="w-20 shrink-0">
+            {assignees.length > 0 && <AvatarStack users={assignees} size={22} />}
+          </div>
         </div>
-        <div className="hidden w-24 shrink-0 md:block"><PriorityBadge priority={t.priority} /></div>
-        <div className="hidden w-24 shrink-0 lg:block">
-          {t.due_date && <span className={cn("text-xs", overdue ? "text-destructive font-medium" : "text-muted-foreground")}>{formatDate(t.due_date)}</span>}
-        </div>
-        <div className="w-20 shrink-0">
-          {assignees.length > 0 && <AvatarStack users={assignees} size={22} />}
-        </div>
-      </>
+      </div>
     );
   };
 
   return (
-    <div className="p-6" data-testid="list-view">
+    <div className="h-full overflow-auto p-6" data-testid="list-view">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
@@ -112,6 +195,7 @@ export function ListView({ tasks, project, onOpenTask }) {
               <SelectItem value="status">Duruma göre</SelectItem>
             </SelectContent>
           </Select>
+          {canDrag && <span className="text-xs text-muted-foreground">Satırı başka görevin üstüne bırakarak alt görev yapın.</span>}
         </div>
       </div>
 
@@ -144,23 +228,13 @@ export function ListView({ tasks, project, onOpenTask }) {
             <CheckSquare className="h-8 w-8 text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">Bu filtreye uygun görev yok.</p>
           </div>
-        ) : canReorder ? (
-          <Reorder.Group axis="y" values={sorted} onReorder={persistOrder}>
-            {sorted.map((t) => (
-              <Reorder.Item key={t.id} value={t}
-                onClick={() => onOpenTask(t.id)}
-                className="flex cursor-pointer items-center gap-2 border-b border-border bg-card px-3 py-2.5 last:border-0 hover:bg-muted/50"
-                data-testid={`list-row-${t.id}`}>
-                {renderRow(t)}
-              </Reorder.Item>
-            ))}
-          </Reorder.Group>
         ) : (
           sorted.map((t) => (
-            <div key={t.id} onClick={() => onOpenTask(t.id)}
-              className="flex cursor-pointer items-center gap-2 border-b border-border px-3 py-2.5 last:border-0 hover:bg-muted/50"
-              data-testid={`list-row-${t.id}`}>
-              {renderRow(t)}
+            <div key={t.id} className="group">
+              <Row t={t} depth={0} />
+              {(subtasksOf[t.id] || []).map((s) => (
+                <div key={s.id} className="group"><Row t={s} depth={1} /></div>
+              ))}
             </div>
           ))
         )}

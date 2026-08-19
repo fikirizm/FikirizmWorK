@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Lightbulb, Users, Plus, ChevronLeft, ChevronRight,
-  Zap, Folder, Rocket, Megaphone, Settings, ChevronsUpDown, Trophy, Tent, Activity, Mail,
+  Zap, Folder, Rocket, Megaphone, Settings, ChevronsUpDown, Trophy, Tent, Activity, Mail, Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +22,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuLabel, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { UserAvatar } from "@/components/UserAvatar";
 import { CURRENCIES } from "@/lib/constants";
 
@@ -38,7 +42,7 @@ function ProjectIcon({ icon, color }) {
 }
 
 export function Sidebar({ collapsed, setCollapsed }) {
-  const { projects, currentWorkspace, currentWorkspaceId, org, members } = useAppData();
+  const { projects, workspaces, currentWorkspace, currentWorkspaceId, setCurrentWorkspaceId, org, members } = useAppData();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -49,6 +53,25 @@ export function Sidebar({ collapsed, setCollapsed }) {
   const [currency, setCurrency] = useState("TRY");
   const [selMembers, setSelMembers] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [wsOpen, setWsOpen] = useState(false);
+  const [wsName, setWsName] = useState("");
+  const [wsSaving, setWsSaving] = useState(false);
+  const isPriv = user?.role === "owner" || user?.role === "admin";
+
+  const createWorkspace = async () => {
+    if (!wsName.trim()) return;
+    setWsSaving(true);
+    try {
+      const { data } = await API.post("/workspaces", { name: wsName.trim() });
+      await queryClient.refetchQueries({ queryKey: ["bootstrap"] });
+      setCurrentWorkspaceId(data.id);
+      toast.success("Çalışma alanı oluşturuldu");
+      setWsOpen(false); setWsName("");
+      navigate("/panel");
+    } catch {
+      toast.error("Çalışma alanı oluşturulamadı");
+    } finally { setWsSaving(false); }
+  };
 
   const [seen, setSeen] = useState(() => localStorage.getItem("fik_activity_seen") || "");
   useEffect(() => {
@@ -112,13 +135,35 @@ export function Sidebar({ collapsed, setCollapsed }) {
 
       {!collapsed && (
         <div className="px-3 py-3">
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-xs font-bold text-primary">
-              {(currentWorkspace?.name || "W")[0]}
-            </div>
-            <span className="flex-1 truncate text-sm font-medium">{currentWorkspace?.name || "Çalışma Alanı"}</span>
-            <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex w-full items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-2 transition-colors hover:bg-muted" data-testid="workspace-switcher-btn">
+                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-xs font-bold text-primary">
+                  {(currentWorkspace?.name || "W")[0]}
+                </div>
+                <span className="flex-1 truncate text-left text-sm font-medium">{currentWorkspace?.name || "Çalışma Alanı"}</span>
+                <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56" data-testid="workspace-menu">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Çalışma Alanları</DropdownMenuLabel>
+              {workspaces.map((w) => (
+                <DropdownMenuItem key={w.id} onClick={() => { setCurrentWorkspaceId(w.id); navigate("/panel"); }} data-testid={`workspace-item-${w.id}`}>
+                  <div className="mr-2 flex h-5 w-5 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">{(w.name || "W")[0]}</div>
+                  <span className="flex-1 truncate">{w.name}</span>
+                  {w.id === currentWorkspaceId && <Check className="ml-2 h-4 w-4 text-primary" />}
+                </DropdownMenuItem>
+              ))}
+              {isPriv && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => { setWsName(""); setWsOpen(true); }} data-testid="new-workspace-btn">
+                    <Plus className="mr-2 h-4 w-4" /> Yeni çalışma alanı
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
 
@@ -236,6 +281,24 @@ export function Sidebar({ collapsed, setCollapsed }) {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>İptal</Button>
             <Button onClick={createProject} disabled={saving || !name.trim()} data-testid="project-save-btn">Oluştur</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={wsOpen} onOpenChange={setWsOpen}>
+        <DialogContent data-testid="create-workspace-dialog">
+          <DialogHeader>
+            <DialogTitle>Yeni Çalışma Alanı</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label>Çalışma alanı adı</Label>
+            <Input value={wsName} onChange={(e) => setWsName(e.target.value)} placeholder="Örn. Etkinlik Ekibi" autoFocus
+              onKeyDown={(e) => e.key === "Enter" && createWorkspace()} data-testid="workspace-name-input" />
+            <p className="text-xs text-muted-foreground">Projeler ve fikirler her çalışma alanına özeldir.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setWsOpen(false)}>İptal</Button>
+            <Button onClick={createWorkspace} disabled={wsSaving || !wsName.trim()} data-testid="workspace-save-btn">Oluştur</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

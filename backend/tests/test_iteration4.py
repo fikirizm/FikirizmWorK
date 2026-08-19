@@ -7,7 +7,7 @@ import requests
 import pytest
 from motor.motor_asyncio import AsyncIOMotorClient
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://work-dashboard-69.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://team-gantt-4.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
 
 OWNER = ("ingobiosport@gmail.com", "Fikirizm2025!")

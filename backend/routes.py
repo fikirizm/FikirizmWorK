@@ -23,7 +23,7 @@ from models import (
     RegisterBody, LoginBody, SessionBody, WorkspaceBody, ProjectBody, ProjectUpdate,
     TaskBody, TaskUpdate, BulkUpdate, CommentBody, IdeaBody, IdeaUpdate, InviteBody,
     BudgetBody, BudgetUpdate, BudgetCategoryBody, AcceptInviteBody, MemberUpdate, EmailSettingsBody, TestEmailBody,
-    NotifPrefsBody, ProfileUpdate, OrgUpdate, WorkspaceUpdate,
+    NotifPrefsBody, ProfileUpdate, OrgUpdate, WorkspaceUpdate, ChangePasswordBody,
 )
 from templates_data import TEMPLATES, get_template
 from mailer import (email_task_assigned, email_project_added, email_invite,
@@ -65,9 +65,36 @@ def can_edit_budget(user, project):
 async def accessible_project_ids(user):
     if is_privileged(user):
         return None  # None => all projects in org
+    acc_ws = await accessible_workspace_ids(user)
+    wsset = set(acc_ws) if acc_ws is not None else None
     projs = await db.projects.find(
-        {"org_id": user["org_id"]}, {"_id": 0, "id": 1, "members": 1, "created_by": 1}).to_list(2000)
-    return [p["id"] for p in projs if user["user_id"] in p.get("members", [])]
+        {"org_id": user["org_id"]}, {"_id": 0, "id": 1, "members": 1, "created_by": 1, "workspace_id": 1}).to_list(2000)
+    return [p["id"] for p in projs if user["user_id"] in p.get("members", [])
+            and (wsset is None or p.get("workspace_id") in wsset)]
+
+
+async def accessible_workspace_ids(user):
+    if is_privileged(user):
+        return None  # None => all workspaces in org
+    ms = await db.memberships.find(
+        {"org_id": user["org_id"], "user_id": user["user_id"]}, {"_id": 0, "workspace_id": 1}).to_list(500)
+    return [m["workspace_id"] for m in ms]
+
+
+async def ensure_workspace_access(user, workspace_id):
+    if is_privileged(user) or not workspace_id:
+        return
+    m = await db.memberships.find_one(
+        {"org_id": user["org_id"], "user_id": user["user_id"], "workspace_id": workspace_id})
+    if not m:
+        raise HTTPException(status_code=403, detail="Bu çalışma alanına erişiminiz yok")
+
+
+async def _ensure_memberships(org_id, workspace_id, user_ids):
+    for uid in user_ids:
+        await db.memberships.update_one(
+            {"workspace_id": workspace_id, "user_id": uid},
+            {"$set": {"workspace_id": workspace_id, "user_id": uid, "org_id": org_id}}, upsert=True)
 
 
 def can_see_task(user, task):
@@ -87,6 +114,10 @@ def notif_prefs(u):
         "budget": p.get("budget", True),
         "reminder": p.get("reminder", True),
         "muted_projects": p.get("muted_projects", []),
+        "in_app_assign": p.get("in_app_assign", True),
+        "in_app_comment": p.get("in_app_comment", True),
+        "in_app_vote": p.get("in_app_vote", True),
+        "in_app_idea": p.get("in_app_idea", True),
     }
 
 
@@ -141,6 +172,10 @@ async def log_activity(org_id, workspace_id, user, action, target="", project_id
 
 
 async def create_notification(org_id, user_id, ntype, message, link=""):
+    u = await db.users.find_one({"user_id": user_id}, {"_id": 0, "notif_prefs": 1})
+    prefs = notif_prefs(u)
+    if not prefs.get(f"in_app_{ntype}", True):
+        return
     doc = {
         "id": new_id("ntf_"),
         "org_id": org_id,
@@ -275,23 +310,46 @@ async def me(user: dict = Depends(get_current_user)):
 async def bootstrap(user: dict = Depends(get_current_user)):
     org_id = user["org_id"]
     org = await db.organizations.find_one({"id": org_id}, {"_id": 0})
-    workspaces = await db.workspaces.find({"org_id": org_id}, {"_id": 0}).to_list(100)
+    all_workspaces = await db.workspaces.find({"org_id": org_id}, {"_id": 0}).to_list(100)
     all_projects = await db.projects.find({"org_id": org_id}, {"_id": 0}).to_list(500)
+    all_members = await db.users.find({"org_id": org_id}, {"_id": 0, "password_hash": 0}).to_list(200)
+    ms = await db.memberships.find({"org_id": org_id}, {"_id": 0}).to_list(5000)
+    ws_members_all = {}
+    for m in ms:
+        ws_members_all.setdefault(m["workspace_id"], []).append(m["user_id"])
     if is_privileged(user):
+        workspaces = all_workspaces
         projects = all_projects
+        members = all_members
+        workspace_members = ws_members_all
     else:
-        projects = [p for p in all_projects if user["user_id"] in p.get("members", [])]
-    members = await db.users.find({"org_id": org_id}, {"_id": 0, "password_hash": 0}).to_list(200)
+        acc_ws = set(await accessible_workspace_ids(user))
+        workspaces = [w for w in all_workspaces if w["id"] in acc_ws]
+        projects = [p for p in all_projects
+                    if user["user_id"] in p.get("members", []) and p.get("workspace_id") in acc_ws]
+        shared_ids = {user["user_id"]}
+        for wid in acc_ws:
+            shared_ids.update(ws_members_all.get(wid, []))
+        members = [m for m in all_members if m["user_id"] in shared_ids]
+        workspace_members = {wid: ws_members_all.get(wid, []) for wid in acc_ws}
     return {"org": org, "workspaces": workspaces, "projects": projects, "members": members,
-            "user": user, "templates": {k: {"label": v["label"], "icon": v["icon"]} for k, v in TEMPLATES.items()}}
+            "workspace_members": workspace_members, "user": user,
+            "templates": {k: {"label": v["label"], "icon": v["icon"]} for k, v in TEMPLATES.items()}}
 
 
 # ---------------- WORKSPACES ----------------
 @router.post("/workspaces")
 async def create_workspace(body: WorkspaceBody, user: dict = Depends(get_current_user)):
+    if not is_privileged(user):
+        raise HTTPException(status_code=403, detail="Çalışma alanı oluşturma yetkiniz yok")
     ws = {"id": new_id("ws_"), "org_id": user["org_id"], "name": body.name,
           "description": body.description, "created_at": now_iso(), "created_by": user["user_id"]}
     await db.workspaces.insert_one(ws)
+    member_ids = list(dict.fromkeys((body.members or []) + [user["user_id"]]))
+    for uid in member_ids:
+        await db.memberships.update_one(
+            {"workspace_id": ws["id"], "user_id": uid},
+            {"$set": {"workspace_id": ws["id"], "user_id": uid, "org_id": user["org_id"]}}, upsert=True)
     return {k: v for k, v in ws.items() if k != "_id"}
 
 
@@ -311,6 +369,7 @@ async def create_project(body: ProjectBody, user: dict = Depends(get_current_use
     }
     await db.projects.insert_one(proj)
     out = {k: v for k, v in proj.items() if k != "_id"}
+    await _ensure_memberships(user["org_id"], body.workspace_id, members)
     await _email_new_members([m for m in members if m != user["user_id"]], user, body.name)
     await log_activity(user["org_id"], body.workspace_id, user, "proje oluşturdu", body.name, project_id=proj["id"])
     await manager.broadcast(body.workspace_id, {"type": "project", "action": "create", "data": out})
@@ -335,6 +394,7 @@ async def update_project(project_id: str, body: ProjectUpdate, user: dict = Depe
     if updates:
         await db.projects.update_one({"id": project_id}, {"$set": updates})
     if added:
+        await _ensure_memberships(user["org_id"], proj["workspace_id"], added)
         await _email_new_members(added, user, proj["name"])
     proj = await db.projects.find_one({"id": project_id}, {"_id": 0})
     await manager.broadcast(proj["workspace_id"], {"type": "project", "action": "update", "data": proj})
@@ -449,7 +509,17 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_c
     existing = await db.tasks.find_one({"id": task_id, "org_id": user["org_id"]}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Görev bulunamadı")
-    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    data = body.model_dump(exclude_unset=True)
+    updates = {k: v for k, v in data.items() if k != "parent_id" and v is not None}
+    if "parent_id" in data:
+        new_parent = data["parent_id"]
+        if new_parent and new_parent != task_id:
+            parent = await db.tasks.find_one({"id": new_parent, "org_id": user["org_id"]}, {"_id": 0})
+            if parent and parent.get("parent_id"):
+                new_parent = parent["parent_id"]  # only one nesting level
+        if new_parent == task_id:
+            new_parent = None
+        updates["parent_id"] = new_parent
     if updates:
         await db.tasks.update_one({"id": task_id}, {"$set": updates})
     task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
@@ -526,7 +596,12 @@ async def list_ideas(user: dict = Depends(get_current_user), workspace_id: Optio
                      sort: str = "votes"):
     query = {"org_id": user["org_id"]}
     if workspace_id:
+        await ensure_workspace_access(user, workspace_id)
         query["workspace_id"] = workspace_id
+    else:
+        acc_ws = await accessible_workspace_ids(user)
+        if acc_ws is not None:
+            query["workspace_id"] = {"$in": acc_ws}
     ideas = await db.ideas.find(query, {"_id": 0}).to_list(1000)
     for i in ideas:
         i["vote_count"] = len(i.get("upvotes", []))
@@ -645,11 +720,25 @@ async def convert_idea(idea_id: str, user: dict = Depends(get_current_user)):
     return {"task": out, "project_id": project_id}
 
 
+@router.delete("/ideas/{idea_id}")
+async def delete_idea(idea_id: str, user: dict = Depends(get_current_user)):
+    idea = await db.ideas.find_one({"id": idea_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not idea:
+        raise HTTPException(status_code=404, detail="Fikir bulunamadı")
+    if not is_privileged(user) and idea.get("created_by") != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Bu fikri silme yetkiniz yok")
+    await db.ideas.delete_one({"id": idea_id})
+    await db.comments.delete_many({"idea_id": idea_id})
+    await manager.broadcast(idea["workspace_id"], {"type": "idea", "action": "delete", "data": {"id": idea_id}})
+    return {"ok": True}
+
+
 # ---------------- DASHBOARD ----------------
 @router.get("/dashboard")
 async def dashboard(user: dict = Depends(get_current_user), workspace_id: Optional[str] = None):
     query = {"org_id": user["org_id"]}
     if workspace_id:
+        await ensure_workspace_access(user, workspace_id)
         query["workspace_id"] = workspace_id
     allowed = await accessible_project_ids(user)
     if allowed is not None:
@@ -776,7 +865,14 @@ async def read_all(user: dict = Depends(get_current_user)):
 @router.get("/members")
 async def get_members(user: dict = Depends(get_current_user)):
     members = await db.users.find({"org_id": user["org_id"]}, {"_id": 0, "password_hash": 0}).to_list(200)
-    return members
+    if is_privileged(user):
+        return members
+    acc_ws = set(await accessible_workspace_ids(user))
+    ms = await db.memberships.find(
+        {"org_id": user["org_id"], "workspace_id": {"$in": list(acc_ws)}}, {"_id": 0, "user_id": 1}).to_list(5000)
+    shared_ids = {m["user_id"] for m in ms}
+    shared_ids.add(user["user_id"])
+    return [m for m in members if m["user_id"] in shared_ids]
 
 
 @router.post("/members/invite")
@@ -912,7 +1008,12 @@ async def search(q: str, user: dict = Depends(get_current_user)):
 async def get_activities(user: dict = Depends(get_current_user), workspace_id: Optional[str] = None):
     query = {"org_id": user["org_id"]}
     if workspace_id:
+        await ensure_workspace_access(user, workspace_id)
         query["workspace_id"] = workspace_id
+    else:
+        acc_ws = await accessible_workspace_ids(user)
+        if acc_ws is not None:
+            query["workspace_id"] = {"$in": acc_ws}
     acts = await db.activities.find(query, {"_id": 0}).to_list(300)
     allowed = await accessible_project_ids(user)
     if allowed is not None:
@@ -1292,6 +1393,21 @@ async def update_profile(body: ProfileUpdate, user: dict = Depends(get_current_u
     return sanitize_user(u)
 
 
+@router.post("/auth/change-password")
+async def change_password(body: ChangePasswordBody, user: dict = Depends(get_current_user)):
+    u = await db.users.find_one({"user_id": user["user_id"]})
+    if not u:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+    if not u.get("password_hash"):
+        raise HTTPException(status_code=400, detail="Google ile giriş yaptığınız için parola değiştirilemez")
+    if not verify_password(body.current_password, u["password_hash"]):
+        raise HTTPException(status_code=400, detail="Mevcut parola hatalı")
+    if body.current_password == body.new_password:
+        raise HTTPException(status_code=400, detail="Yeni parola mevcut paroladan farklı olmalı")
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"password_hash": hash_password(body.new_password)}})
+    return {"ok": True}
+
+
 @router.patch("/organization")
 async def update_organization(body: OrgUpdate, user: dict = Depends(get_current_user)):
     if not is_privileged(user):
@@ -1306,9 +1422,20 @@ async def update_organization(body: OrgUpdate, user: dict = Depends(get_current_
 async def update_workspace(workspace_id: str, body: WorkspaceUpdate, user: dict = Depends(get_current_user)):
     if not is_privileged(user):
         raise HTTPException(status_code=403, detail="Yetkiniz yok")
-    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    ws = await db.workspaces.find_one({"id": workspace_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Çalışma alanı bulunamadı")
+    updates = {k: v for k, v in body.model_dump().items() if v is not None and k != "members"}
     if updates:
         await db.workspaces.update_one({"id": workspace_id, "org_id": user["org_id"]}, {"$set": updates})
+    if body.members is not None:
+        creator = ws.get("created_by")
+        member_ids = list(dict.fromkeys(list(body.members) + ([creator] if creator else [])))
+        await db.memberships.delete_many({"workspace_id": workspace_id, "org_id": user["org_id"]})
+        for uid in member_ids:
+            await db.memberships.update_one(
+                {"workspace_id": workspace_id, "user_id": uid},
+                {"$set": {"workspace_id": workspace_id, "user_id": uid, "org_id": user["org_id"]}}, upsert=True)
     ws = await db.workspaces.find_one({"id": workspace_id, "org_id": user["org_id"]}, {"_id": 0})
     if ws:
         await manager.broadcast(workspace_id, {"type": "workspace", "action": "update", "data": ws})

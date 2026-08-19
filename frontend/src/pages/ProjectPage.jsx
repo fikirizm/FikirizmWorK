@@ -144,11 +144,11 @@ export default function ProjectPage() {
         ) : view === "kanban" ? (
           <KanbanView tasks={filtered} project={project} onOpenTask={setOpenTaskId} />
         ) : view === "list" ? (
-          <ListView tasks={filtered} project={project} onOpenTask={setOpenTaskId} />
+          <ListView tasks={filtered} allTasks={tasks} project={project} onOpenTask={setOpenTaskId} />
         ) : view === "calendar" ? (
           <CalendarView tasks={filtered} project={project} onOpenTask={setOpenTaskId} />
         ) : view === "gantt" ? (
-          <GanttView tasks={filtered} project={project} onOpenTask={setOpenTaskId} />
+          <GanttView tasks={filtered} project={project} onOpenTask={setOpenTaskId} onNewTask={() => setCreateOpen(true)} />
         ) : (
           <BudgetView project={project} tasks={topLevel} />
         )}

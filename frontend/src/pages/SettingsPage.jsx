@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { UserAvatar } from "@/components/UserAvatar";
 import {
-  Settings, User, Bell, Mail, Server, Send, CheckCircle2, Building2, BellOff,
+  Settings, User, Bell, Mail, Server, Send, CheckCircle2, Building2, BellOff, Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -74,6 +74,7 @@ function ProfileTab() {
   };
 
   return (
+    <div className="space-y-5">
     <Card>
       <div className="flex items-center gap-4">
         <UserAvatar user={user} size={56} />
@@ -96,6 +97,51 @@ function ProfileTab() {
       </div>
       <Button onClick={save} disabled={saving || !name.trim() || name.trim() === user?.name} data-testid="profile-save-btn">
         {saving ? "Kaydediliyor..." : "Kaydet"}
+      </Button>
+    </Card>
+    <PasswordCard />
+    </div>
+  );
+}
+
+function PasswordCard() {
+  const [cur, setCur] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const change = async () => {
+    if (next.length < 6) { toast.error("Yeni parola en az 6 karakter olmalı"); return; }
+    if (next !== confirm) { toast.error("Yeni parolalar eşleşmiyor"); return; }
+    setSaving(true);
+    try {
+      await API.post("/auth/change-password", { current_password: cur, new_password: next });
+      toast.success("Parola güncellendi");
+      setCur(""); setNext(""); setConfirm("");
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Card>
+      <div className="flex items-center gap-1.5 text-sm font-semibold"><Lock className="h-4 w-4" /> Parola Değiştir</div>
+      <p className="text-xs text-muted-foreground">Güvenliğiniz için mevcut parolanızı girin.</p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="space-y-1.5">
+          <Label>Mevcut parola</Label>
+          <Input type="password" value={cur} onChange={(e) => setCur(e.target.value)} data-testid="pw-current-input" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Yeni parola</Label>
+          <Input type="password" value={next} onChange={(e) => setNext(e.target.value)} data-testid="pw-new-input" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Yeni parola (tekrar)</Label>
+          <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} data-testid="pw-confirm-input" />
+        </div>
+      </div>
+      <Button onClick={change} disabled={saving || !cur || !next || !confirm} data-testid="pw-save-btn">
+        {saving ? "Güncelleniyor..." : "Parolayı güncelle"}
       </Button>
     </Card>
   );
@@ -132,8 +178,29 @@ function NotificationsTab() {
     { k: "reminder", title: "Hatırlatmalar", desc: "Günlük ve haftalık görev hatırlatma e-postaları" },
   ];
 
+  const inAppRows = [
+    { k: "in_app_assign", title: "Görev atamaları", desc: "Bir göreve atandığınızda çan bildirimi" },
+    { k: "in_app_comment", title: "Yorumlar", desc: "Görevlerinize yorum yapıldığında" },
+    { k: "in_app_vote", title: "Fikir oyları", desc: "Fikirleriniz oylandığında" },
+    { k: "in_app_idea", title: "Fikir durumu", desc: "Fikrinizin durumu değiştiğinde" },
+  ];
+
   return (
     <div className="space-y-5">
+      <Card>
+        <div className="flex items-center gap-1.5 text-sm font-semibold"><Bell className="h-4 w-4" /> Uygulama içi bildirimler (çan)</div>
+        <p className="text-xs text-muted-foreground">Sağ üstteki çan simgesinde hangi bildirimlerin görüneceğini seçin.</p>
+        {inAppRows.map((r) => (
+          <div key={r.k} className="flex items-center justify-between gap-4 border-t border-border pt-3">
+            <div>
+              <p className="text-sm font-medium">{r.title}</p>
+              <p className="text-xs text-muted-foreground">{r.desc}</p>
+            </div>
+            <Switch checked={prefs[r.k] !== false} onCheckedChange={(v) => setType(r.k, v)} data-testid={`notif-${r.k}-switch`} />
+          </div>
+        ))}
+      </Card>
+
       <Card>
         <div className="text-sm font-semibold">E-posta bildirimleri</div>
         {rows.map((r) => (
