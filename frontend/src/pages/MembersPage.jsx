@@ -59,7 +59,9 @@ export default function MembersPage() {
             <div key={m.user_id} className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-0" data-testid={`member-${m.user_id}`}>
               <UserAvatar user={m} size={40} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{m.name} {m.user_id === user?.user_id && <span className="text-xs text-muted-foreground">(siz)</span>}</p>
+                <p className="truncate text-sm font-medium">{m.name} {m.user_id === user?.user_id && <span className="text-xs text-muted-foreground">(siz)</span>}
+                  {m.status === "invited" && <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600">Davet bekliyor</span>}
+                </p>
                 <p className="truncate text-xs text-muted-foreground">{m.email}</p>
               </div>
               <span className="rounded-md px-2 py-1 text-xs font-semibold" style={{ color: role.color, background: `${role.color}1f` }}>
@@ -89,7 +91,7 @@ function InviteDialog({ open, onOpenChange, onDone }) {
     setSaving(true);
     try {
       await API.post("/members/invite", { email: email.trim(), name: name.trim(), role });
-      toast.success("Üye eklendi (varsayılan parola: Demo2025!)");
+      toast.success("Davet gönderildi — e-postadaki bağlantıyla parolasını belirleyecek");
       queryClient.invalidateQueries({ queryKey: ["bootstrap"] });
       onDone(); onOpenChange(false);
     } catch (err) {

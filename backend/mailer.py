@@ -153,3 +153,53 @@ async def email_project_added(to_email, to_name, actor_name, project_name):
         await send_email(to=to_email, subject=subject, html=_shell(inner))
     except Exception as e:
         logger.warning(f"project add email failed: {e}")
+
+
+async def email_invite(to_email, to_name, actor_name, invite_link, role_label):
+    subject = "Fikirizm Cloud ekibine davet edildiniz"
+    inner = (
+        f"<p>Merhaba {escape(to_name or '')},</p>"
+        f"<p><strong>{escape(actor_name or '')}</strong> sizi Fikirizm Cloud'a "
+        f"<strong>{escape(role_label)}</strong> olarak davet etti.</p>"
+        "<p>Kurulumu tamamlamak ve kendi parolanızı belirlemek için aşağıdaki butona tıklayın. "
+        "Bağlantı 7 gün geçerlidir.</p>"
+        f'<p style="margin-top:20px"><a href="{invite_link}" '
+        'style="background:#4f46e5;color:#fff;text-decoration:none;padding:10px 18px;'
+        'border-radius:8px;display:inline-block;font-weight:600">Daveti kabul et</a></p>'
+    )
+    await send_email(to=to_email, subject=subject, html=_shell(inner))
+
+
+async def email_budget_alert(to_email, to_name, project_name, actual, planned, currency):
+    subject = f"Bütçe uyarısı: {project_name}"
+    inner = (
+        f"<p>Merhaba {escape(to_name or '')},</p>"
+        f"<p><strong>{escape(project_name or '')}</strong> projesinde gerçekleşen giderler "
+        f"planlanan bütçeyi aştı.</p>"
+        f"<p>Gerçekleşen gider: <strong>{currency}{actual:,.0f}</strong><br>"
+        f"Planlanan gider: {currency}{planned:,.0f}</p>"
+        "<p>Detaylar için projenin Bütçe sekmesini inceleyin.</p>"
+    )
+    try:
+        await send_email(to=to_email, subject=subject, html=_shell(inner))
+    except Exception as e:
+        logger.warning(f"budget alert email failed: {e}")
+
+
+async def email_weekly_summary(to_email, to_name, open_count, overdue_titles):
+    subject = f"Haftalık özet: {open_count} açık görev"
+    od = ""
+    if overdue_titles:
+        items = "".join(f"<li>{escape(t)}</li>" for t in overdue_titles[:10])
+        od = f"<p><strong>Geciken görevler:</strong></p><ul>{items}</ul>"
+    inner = (
+        f"<p>Merhaba {escape(to_name or '')},</p>"
+        f"<p>Bu hafta üzerinizde <strong>{open_count}</strong> açık görev var"
+        + (f", bunlardan <strong>{len(overdue_titles)}</strong> tanesi gecikmiş." if overdue_titles else ".") + "</p>"
+        f"{od}"
+        "<p>İyi bir hafta dileriz! 🚀</p>"
+    )
+    try:
+        await send_email(to=to_email, subject=subject, html=_shell(inner))
+    except Exception as e:
+        logger.warning(f"weekly summary email failed: {e}")

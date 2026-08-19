@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import API from "@/lib/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAppData } from "@/context/AppData";
@@ -21,7 +21,7 @@ import { PriorityBadge } from "@/components/Badges";
 import { PRIORITIES, toDateInput, formatDateTime, doneStatusId, formatMoney } from "@/lib/constants";
 import {
   Trash2, Plus, X, Calendar as CalIcon, Users, Flag, Tag, ListChecks,
-  MessageSquare, CheckSquare, Send, GitBranch, Eye, Lock, Wallet,
+  MessageSquare, CheckSquare, Send, GitBranch, Eye, Lock, Wallet, Paperclip, Download, FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -117,6 +117,45 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
     if (!comment.trim()) return;
     await API.post(`/tasks/${taskId}/comments`, { text: comment.trim() });
     setComment("");
+    invalidate();
+  };
+
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+
+  const uploadFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      await API.post(`/tasks/${taskId}/attachments`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      toast.success("Dosya yüklendi");
+      invalidate();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Yükleme başarısız");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const downloadFile = async (f) => {
+    try {
+      const res = await API.get(`/files/${f.id}/download`, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url; a.download = f.original_filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("İndirme başarısız");
+    }
+  };
+
+  const deleteFile = async (id) => {
+    await API.delete(`/files/${id}`);
     invalidate();
   };
 
@@ -310,6 +349,28 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
                       onKeyDown={(e) => e.key === "Enter" && addSubtask()}
                       placeholder="Alt görev ekle" className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" data-testid="subtask-input" />
                   </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label icon={Paperclip}>Dosya Ekleri</Label>
+                <div className="space-y-1.5">
+                  {(task.attachments || []).map((f) => (
+                    <div key={f.id} className="group flex items-center gap-2 rounded-md border border-border px-2.5 py-2 hover:bg-muted/50" data-testid={`attachment-${f.id}`}>
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <button onClick={() => downloadFile(f)} className="min-w-0 flex-1 truncate text-left text-sm hover:text-primary" data-testid={`attachment-download-${f.id}`}>
+                        {f.original_filename}
+                      </button>
+                      <span className="shrink-0 text-xs text-muted-foreground">{(f.size / 1024).toFixed(0)} KB</span>
+                      <button onClick={() => downloadFile(f)} className="opacity-0 group-hover:opacity-100"><Download className="h-3.5 w-3.5 text-muted-foreground" /></button>
+                      <button onClick={() => deleteFile(f.id)} className="opacity-0 group-hover:opacity-100" data-testid={`attachment-delete-${f.id}`}><X className="h-3.5 w-3.5 text-destructive" /></button>
+                    </div>
+                  ))}
+                  <input ref={fileInputRef} type="file" className="hidden" onChange={uploadFile} data-testid="attachment-file-input" />
+                  <Button variant="outline" size="sm" className="w-full" disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()} data-testid="attachment-upload-btn">
+                    <Paperclip className="mr-1.5 h-4 w-4" /> {uploading ? "Yükleniyor..." : "Dosya ekle"}
+                  </Button>
                 </div>
               </div>
 

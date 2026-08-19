@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 4 (attachments, member invite, budget alert, weekly-summary cron) tested end-to-end. Backend: 24/24 pytest cases in test_iteration4.py PASS — attachment upload (200), included in GET /api/tasks/{id}.attachments, download via Bearer header and ?auth= query (200), unauth 401, non-member 403 on private task file, 15MB rejection 400, soft-delete 200 + 404 on subsequent download; invite creates status='invited' user without exposing invite_token/password_hash, member 403 on invite, duplicate 400, GET /api/invite/{token} returns {email,name,org_name}, unknown token 404, POST /invite/{token}/accept sets password + returns {user, token}, subsequent login works, token single-use (404 on reuse); budget alert endpoint returns 200 on under-budget and crossing (email is best-effort); cron/weekly-summary: missing/wrong secret 401, correct secret 200 {ok:true}; /app/.emergent/crons.yml valid (weekly-summary, '0 9 * * 1', Europe/Istanbul, POST endpoint). Frontend (Playwright as owner on public URL): Bisiklet task drawer 'Dosya Ekleri' section shows attachment-upload-btn/file-input, upload produces attachment-<id>, download and delete testids appear, delete removes the item and 'Dosya yüklendi' toast fires. Members page invite-member-btn → invite-dialog with name/email/role → 'Davet bekliyor' badge and invited email appear in list. /davet?token=badtoken renders error state as expected.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "TaskDrawer + invite-dialog", "issues": ["Radix a11y warning still present: 'DialogContent requires a DialogTitle' and 'Missing Description or aria-describedby' — carried over from iteration 3, not user-visible but pollutes console."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration4.py",
+    "/app/test_reports/pytest/iteration4_results.xml"
+  ],
+  "action_items": [
+    "LOW: Fix Radix DialogTitle/Description a11y warnings across drawer + dialogs (carried over from iter 3).",
+    "PRE-EXISTING (not iter 4): WebSocket handshake returns 403 (wss ..../api/ws/...?token=...) — realtime broadcasts silently fail in preview. UI still refreshes via re-fetch after mutations so functional flows work, but real-time attachment/budget updates depend on this. Investigate ws auth in preview ingress."
+  ],
+  "critical_code_review_comments": [
+    "routes.py grew to 1132 lines (up from 942). Definitely time to split into resource-specific routers (attachments, invite, cron, budget) — the 700-line threshold has been exceeded by 60%.",
+    "download_file uses HTTPException(401) but a browser <a href=.../download?auth=X> would still bounce to a JSON error page on failure. Consider returning a small HTML error page for browser downloads when auth invalid.",
+    "_budget_alert_if_crossed only checks 'not previously exceeding' at the item mutation boundary, so mass import via multiple POSTs each just under budget followed by one crossing item will correctly fire once — good. But bulk-imports done in a single POST are not supported yet (N/A).",
+    "invite_member: `existing = await db.users.find_one({'email': email})` doesn't scope by org_id, so inviting an email that already exists in ANOTHER org (if multi-tenant grows) will 400. Add org_id scoping when multi-org is enabled.",
+    "accept_invite doesn't invalidate any prior sessions of the invited user (not applicable since 'invited' users have no password anyway, but worth noting for security review).",
+    "storage.put_object/get_object are synchronous requests wrapped in run_in_threadpool at call sites — good. Timeout=120s is reasonable for 15MB uploads."
+  ],
+  "updated_files": ["/app/backend/tests/test_iteration4.py"],
+  "success_rate": {"backend": "100% (24/24)", "frontend": "100% (all iter4 flows verified)"},
+  "test_credentials": "Owner ingobiosport@gmail.com/Fikirizm2025! + demo members Demo2025! + WEBHOOK_CRON_SECRET (from /app/backend/.env).",
+  "seed_data_creation": "Backend tests created + cleaned up TEST_priv_task_iter4 task, TEST_iter4 budget items, iter4test_* invited user. Frontend Playwright created uiiter4_<hex>@fikirizm.com invited user and one attachment on 'Katılımcı kayıt sistemini aç' task; the invited user was cleaned up via Mongo delete_many. UI attachment upload uploaded 'TEST_ui_iter4.txt' and then deleted it in the same test. Note: the Bisiklet task 'Katılımcı kayıt sistemini aç' already had 3 pre-existing attachments from earlier iterations — not touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "iteration_4 tests are pytest classes in /app/backend/tests/test_iteration4.py. Must run with `-n 0` to disable xdist parallelism because tests share class-level state (file_id, invite token). All 24 pass. Frontend attachment section requires hovering the row to reveal attachment-delete-<id>. WebSocket 403 in preview is pre-existing (not iter 4). Radix DialogTitle warnings persist from iter 3.",
+  "rca of the issue": "N/A — no functional issues found in iteration 4 features."
+}

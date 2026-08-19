@@ -44,10 +44,18 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - **P1**: E-posta bildirimleri (Resend); gerçek davet akışı (tek kullanımlık token/parola, şu an DEMO_PASSWORD ile eklenir); tam Gantt bağımlılık motoru; dosya eki yükleme (object storage).
 - **P2**: Google OAuth E2E doğrulama; çoklu organizasyon UI'ı; özelleştirilebilir durum yönetimi UI; mobil sidebar; Slack entegrasyonu.
 
+## Implemented — İterasyon 4 (2026-08-19)
+- ✅ **Görev dosya ekleri (obje depolama)**: TaskDrawer'da "Dosya Ekleri" — yükleme/indirme/silme; 15MB sınırı; gizli görev dosyalarına erişim kontrolü. `POST /tasks/{id}/attachments`, `GET /files/{id}/download?auth=`, `DELETE /files/{id}`. Emergent object storage (`storage.py`, EMERGENT_LLM_KEY).
+- ✅ **Bütçe uyarıları**: Gerçekleşen gider planlananı ilk kez aştığında Owner/Admin'e otomatik uyarı e-postası (crossing-detection, non-blocking).
+- ✅ **Haftalık özet (cron)**: `/app/.emergent/crons.yml` — her Pazartesi 09:00 Europe/Istanbul → `POST /api/cron/weekly-summary` (WEBHOOK_CRON_SECRET ile korumalı, işi arka planda çalıştırır) her üyeye açık/geciken görev özeti e-postası.
+- ✅ **Gerçek üye daveti**: davet e-postası + kurulum bağlantısı (`/davet?token=`), davetli kendi parolasını belirleyip otomatik giriş yapar. `POST /members/invite` (status=invited, token gizli), `GET /invite/{token}`, `POST /invite/{token}/accept`. Üyeler listesinde "Davet bekliyor" rozeti.
+- ✅ Test: iteration4 backend 24/24, frontend UI %100.
+- ⚠️ Bilinen (önceden mevcut) sınır: Preview ortamında WebSocket handshake 403 dönebiliyor; realtime yayınlar bu durumda sessizce düşer ancak UI her işlemden sonra yeniden veri çektiği için işlevsellik etkilenmez.
+
 ## Next Tasks
-- Resend ile e-posta bildirimleri.
-- Görev dosya ekleri (object storage).
-- Gerçek üye davet akışı (davet e-postası + kurulum linki).
+- routes.py'yi kaynak bazlı router'lara böl (bakım).
+- Realtime WS'in preview ingress 403 sorununu araştır / polling fallback.
+- Radix DialogTitle/Description a11y uyarılarını temizle.
 
 ## Implemented — İterasyon 3 (2026-08-19)
 - ✅ **Bütçe dışa aktarma**: Excel (.xlsx / openpyxl) ve PDF (reportlab) — `GET /api/projects/{id}/budget/export?fmt=xlsx|pdf`, BudgetView'da Excel/PDF butonları (blob indirme).

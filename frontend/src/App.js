@@ -8,6 +8,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import AuthCallback from "@/pages/AuthCallback";
+import AcceptInvite from "@/pages/AcceptInvite";
 import Dashboard from "@/pages/Dashboard";
 import ProjectPage from "@/pages/ProjectPage";
 import IdeasPage from "@/pages/IdeasPage";
@@ -49,6 +50,7 @@ function AppRouter() {
     <Routes>
       <Route path="/giris" element={<PublicOnly><Login /></PublicOnly>} />
       <Route path="/kayit" element={<PublicOnly><Register /></PublicOnly>} />
+      <Route path="/davet" element={<AcceptInvite />} />
       <Route element={<ProtectedShell />}>
         <Route path="/panel" element={<Dashboard />} />
         <Route path="/proje/:projectId" element={<ProjectPage />} />

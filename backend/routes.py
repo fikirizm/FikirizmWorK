@@ -2,11 +2,15 @@ import uuid
 import os
 import re
 import io
+import hmac
+import secrets
 import logging
 import httpx
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Request, Response, HTTPException, Depends, WebSocket, WebSocketDisconnect, Query
+from fastapi import (APIRouter, Request, Response, HTTPException, Depends, WebSocket,
+                     WebSocketDisconnect, Query, UploadFile, File, BackgroundTasks)
 from fastapi.responses import StreamingResponse
+from starlette.concurrency import run_in_threadpool
 from typing import Optional
 
 from deps import (
@@ -18,10 +22,12 @@ from realtime import manager
 from models import (
     RegisterBody, LoginBody, SessionBody, WorkspaceBody, ProjectBody, ProjectUpdate,
     TaskBody, TaskUpdate, BulkUpdate, CommentBody, IdeaBody, IdeaUpdate, InviteBody,
-    BudgetBody, BudgetUpdate,
+    BudgetBody, BudgetUpdate, AcceptInviteBody,
 )
 from templates_data import TEMPLATES, get_template
-from mailer import email_task_assigned, email_project_added
+from mailer import (email_task_assigned, email_project_added, email_invite,
+                    email_budget_alert, email_weekly_summary)
+from storage import put_object, get_object, mime_for, APP_NAME
 
 logger = logging.getLogger("fikirizm.routes")
 
@@ -97,6 +103,10 @@ def now_iso():
 
 def new_id(prefix=""):
     return f"{prefix}{uuid.uuid4().hex[:16]}"
+
+
+def iso_offset_days(days):
+    return (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
 
 
 async def log_activity(org_id, workspace_id, user, action, target=""):
@@ -404,6 +414,8 @@ async def get_task(task_id: str, user: dict = Depends(get_current_user)):
         "count": len(bitems), "planned": bp, "actual": ba,
         "currency": proj.get("currency", "TRY") if proj else "TRY",
     }
+    attachments = await db.files.find({"task_id": task_id, "is_deleted": False}, {"_id": 0}).to_list(100)
+    task["attachments"] = attachments
     task["subtasks"] = subtasks
     task["comments"] = comments
     return task
@@ -702,15 +714,57 @@ async def invite_member(body: InviteBody, user: dict = Depends(get_current_user)
     existing = await db.users.find_one({"email": email})
     if existing:
         raise HTTPException(status_code=400, detail="Bu e-posta zaten üye")
-    import os
+    role_labels = {"owner": "Sahip", "admin": "Yönetici", "member": "Üye"}
+    token = secrets.token_urlsafe(24)
     user_id = new_id("user_")
     new_user = {
         "user_id": user_id, "email": email, "name": body.name,
-        "password_hash": hash_password(os.environ.get("DEMO_PASSWORD", "Demo2025!")),
+        "password_hash": None, "status": "invited",
+        "invite_token": token, "invite_expires": iso_offset_days(7),
         "picture": "", "org_id": user["org_id"], "role": body.role, "created_at": now_iso(),
     }
     await db.users.insert_one(new_user)
-    return sanitize_user(new_user)
+    link = f"{os.environ.get('APP_URL', '')}/davet?token={token}"
+    try:
+        await email_invite(email, body.name, user.get("name", ""), link, role_labels.get(body.role, "Üye"))
+    except Exception as e:
+        logger.warning(f"invite email failed: {e}")
+    out = {k: v for k, v in new_user.items() if k not in ("_id", "password_hash", "invite_token")}
+    return out
+
+
+@router.get("/invite/{token}")
+async def get_invite(token: str):
+    u = await db.users.find_one({"invite_token": token}, {"_id": 0})
+    if not u:
+        raise HTTPException(status_code=404, detail="Davet bulunamadı veya kullanılmış")
+    if u.get("invite_expires") and u["invite_expires"] < now_iso():
+        raise HTTPException(status_code=400, detail="Davet bağlantısının süresi dolmuş")
+    org = await db.organizations.find_one({"id": u["org_id"]}, {"_id": 0})
+    return {"email": u["email"], "name": u["name"], "org_name": org["name"] if org else "Fikirizm"}
+
+
+@router.post("/invite/{token}/accept")
+async def accept_invite(token: str, body: AcceptInviteBody, response: Response):
+    u = await db.users.find_one({"invite_token": token})
+    if not u:
+        raise HTTPException(status_code=404, detail="Davet bulunamadı veya kullanılmış")
+    if u.get("invite_expires") and u["invite_expires"] < now_iso():
+        raise HTTPException(status_code=400, detail="Davet bağlantısının süresi dolmuş")
+    await db.users.update_one(
+        {"user_id": u["user_id"]},
+        {"$set": {"password_hash": hash_password(body.password), "status": "active"},
+         "$unset": {"invite_token": "", "invite_expires": ""}})
+    ws = await db.workspaces.find_one({"org_id": u["org_id"]}, {"_id": 0})
+    if ws:
+        await db.memberships.update_one(
+            {"workspace_id": ws["id"], "user_id": u["user_id"]},
+            {"$set": {"workspace_id": ws["id"], "user_id": u["user_id"], "org_id": u["org_id"]}}, upsert=True)
+    from deps import create_access_token, create_refresh_token
+    access = create_access_token(u["user_id"], u["email"])
+    refresh = create_refresh_token(u["user_id"])
+    set_auth_cookies(response, access, refresh)
+    return {"user": sanitize_user(u), "token": access}
 
 
 # ---------------- SEARCH ----------------
@@ -740,6 +794,22 @@ async def get_activities(user: dict = Depends(get_current_user), workspace_id: O
 
 
 # ---------------- BUDGET ----------------
+async def _budget_alert_if_crossed(proj, before_items, after_items, actor):
+    b = _budget_summary(before_items)
+    a = _budget_summary(after_items)
+    crossed = (a["planned_expense"] > 0 and a["actual_expense"] > a["planned_expense"]
+               and not (b["actual_expense"] > b["planned_expense"]))
+    if not crossed:
+        return
+    managers = await db.users.find(
+        {"org_id": proj["org_id"], "role": {"$in": ["owner", "admin"]}}, {"_id": 0}).to_list(50)
+    cur = {"TRY": "₺", "USD": "$", "EUR": "€"}.get(proj.get("currency", "TRY"), "")
+    for m in managers:
+        if m.get("email"):
+            await email_budget_alert(m["email"], m.get("name", ""), proj["name"],
+                                     a["actual_expense"], a["planned_expense"], cur)
+
+
 def _budget_summary(items):
     s = {"planned_income": 0.0, "actual_income": 0.0, "planned_expense": 0.0, "actual_expense": 0.0}
     cats = {}
@@ -793,6 +863,8 @@ async def create_budget_item(project_id: str, body: BudgetBody, user: dict = Dep
     }
     await db.budget_items.insert_one(item)
     out = {k: v for k, v in item.items() if k != "_id"}
+    before = await db.budget_items.find({"project_id": project_id, "id": {"$ne": item["id"]}}, {"_id": 0}).to_list(1000)
+    await _budget_alert_if_crossed(proj, before, before + [out], user)
     await log_activity(user["org_id"], proj["workspace_id"], user, "bütçe kalemi ekledi", body.category)
     await manager.broadcast(proj["workspace_id"], {"type": "budget", "action": "create", "data": out})
     return out
@@ -807,9 +879,12 @@ async def update_budget_item(item_id: str, body: BudgetUpdate, user: dict = Depe
     if not can_edit_budget(user, proj):
         raise HTTPException(status_code=403, detail="Bütçeyi düzenleme yetkiniz yok")
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    before = await db.budget_items.find({"project_id": item["project_id"]}, {"_id": 0}).to_list(1000)
     if updates:
         await db.budget_items.update_one({"id": item_id}, {"$set": updates})
     item = await db.budget_items.find_one({"id": item_id}, {"_id": 0})
+    after = [item if x["id"] == item_id else x for x in before]
+    await _budget_alert_if_crossed(proj, before, after, user)
     await manager.broadcast(proj["workspace_id"], {"type": "budget", "action": "update", "data": item})
     return item
 
@@ -925,8 +1000,123 @@ async def export_budget(project_id: str, fmt: str = "xlsx", user: dict = Depends
         headers={"Content-Disposition": f'attachment; filename="{fname}.xlsx"'})
 
 
-# ---------------- WEBSOCKET ----------------
-@router.websocket("/ws/{workspace_id}")
+# ---------------- ATTACHMENTS ----------------
+MAX_FILE_BYTES = 15 * 1024 * 1024
+
+
+@router.post("/tasks/{task_id}/attachments")
+async def upload_attachment(task_id: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    task = await db.tasks.find_one({"id": task_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not task or not can_see_task(user, task):
+        raise HTTPException(status_code=403, detail="Bu göreve erişiminiz yok")
+    data = await file.read()
+    if len(data) > MAX_FILE_BYTES:
+        raise HTTPException(status_code=400, detail="Dosya 15MB sınırını aşıyor")
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "bin"
+    path = f"{APP_NAME}/uploads/{user['user_id']}/{uuid.uuid4().hex}.{ext}"
+    ct = file.content_type or mime_for(file.filename)
+    try:
+        result = await run_in_threadpool(put_object, path, data, ct)
+    except Exception as e:
+        logger.error(f"upload failed: {e}")
+        raise HTTPException(status_code=502, detail="Dosya yüklenemedi")
+    doc = {
+        "id": new_id("file_"), "task_id": task_id, "org_id": user["org_id"],
+        "workspace_id": task["workspace_id"], "storage_path": result["path"],
+        "original_filename": file.filename, "content_type": ct, "size": result.get("size", len(data)),
+        "uploaded_by": user["user_id"], "uploaded_by_name": user.get("name", ""),
+        "is_deleted": False, "created_at": now_iso(),
+    }
+    await db.files.insert_one(doc)
+    out = {k: v for k, v in doc.items() if k != "_id"}
+    await manager.broadcast(task["workspace_id"], {"type": "attachment", "action": "create", "data": out})
+    return out
+
+
+@router.get("/files/{file_id}/download")
+async def download_file(file_id: str, request: Request, auth: Optional[str] = Query(None)):
+    from deps import _resolve_user, sanitize_user
+    header = request.headers.get("Authorization", "")
+    if auth and not header:
+        header = f"Bearer {auth}"
+    u = await _resolve_user(request.cookies, header)
+    if not u:
+        raise HTTPException(status_code=401, detail="Kimlik doğrulanamadı")
+    user = sanitize_user(u)
+    rec = await db.files.find_one({"id": file_id, "is_deleted": False}, {"_id": 0})
+    if not rec:
+        raise HTTPException(status_code=404, detail="Dosya bulunamadı")
+    task = await db.tasks.find_one({"id": rec["task_id"]}, {"_id": 0})
+    if task and not can_see_task(user, task):
+        raise HTTPException(status_code=403, detail="Erişim yok")
+    try:
+        content, ct = await run_in_threadpool(get_object, rec["storage_path"])
+    except Exception as e:
+        logger.error(f"download failed: {e}")
+        raise HTTPException(status_code=502, detail="Dosya alınamadı")
+    return Response(content=content, media_type=rec.get("content_type", ct),
+                    headers={"Content-Disposition": f'inline; filename="{rec["original_filename"]}"'})
+
+
+@router.delete("/files/{file_id}")
+async def delete_file(file_id: str, user: dict = Depends(get_current_user)):
+    rec = await db.files.find_one({"id": file_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not rec:
+        return {"ok": True}
+    if rec["uploaded_by"] != user["user_id"] and not is_privileged(user):
+        raise HTTPException(status_code=403, detail="Bu dosyayı silme yetkiniz yok")
+    await db.files.update_one({"id": file_id}, {"$set": {"is_deleted": True}})
+    await manager.broadcast(rec["workspace_id"], {"type": "attachment", "action": "delete", "data": {"id": file_id}})
+    return {"ok": True}
+
+
+# ---------------- CRON ----------------
+async def _run_weekly_summary():
+    users = await db.users.find({}, {"_id": 0}).to_list(500)
+    projects = await db.projects.find({}, {"_id": 0}).to_list(2000)
+    pmap = {p["id"]: p for p in projects}
+    now = datetime.now(timezone.utc)
+
+    def is_done(t):
+        proj = pmap.get(t.get("project_id"))
+        for s in (proj.get("statuses", []) if proj else []):
+            if s["id"] == t.get("status"):
+                return bool(s.get("done"))
+        return False
+
+    for u in users:
+        if not u.get("email") or u.get("status") == "invited":
+            continue
+        tasks = await db.tasks.find({"assignees": u["user_id"], "parent_id": None}, {"_id": 0}).to_list(1000)
+        open_t = [t for t in tasks if not is_done(t)]
+        overdue = []
+        for t in open_t:
+            if t.get("due_date"):
+                try:
+                    dd = datetime.fromisoformat(t["due_date"].replace("Z", "+00:00"))
+                    if dd.tzinfo is None:
+                        dd = dd.replace(tzinfo=timezone.utc)
+                    if dd < now:
+                        overdue.append(t["title"])
+                except Exception:
+                    pass
+        if open_t:
+            await email_weekly_summary(u["email"], u.get("name", ""), len(open_t), overdue)
+
+
+@router.post("/cron/weekly-summary")
+async def cron_weekly_summary(request: Request, background: BackgroundTasks):
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    header = request.headers.get("Authorization", "")
+    token = header[7:] if header.startswith("Bearer ") else ""
+    secret = os.environ.get("WEBHOOK_CRON_SECRET", "")
+    if not secret or not hmac.compare_digest(token, secret):
+        raise HTTPException(status_code=401, detail="Yetkisiz")
+    background.add_task(_run_weekly_summary)
+    return {"ok": True}
+
+
+# ---------------- WEBSOCKET ----------------@router.websocket("/ws/{workspace_id}")
 async def websocket_endpoint(websocket: WebSocket, workspace_id: str):
     user = await get_ws_user(websocket)
     if not user:

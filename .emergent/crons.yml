@@ -1,0 +1,10 @@
+crons:
+  - name: weekly-summary
+    description: "Her Pazartesi 09:00 (İstanbul) ekibe açık ve geciken görev özetini e-postayla gönderir"
+    # Day-of-week is numeric 0-6 with 0=Sunday, so Monday is 1.
+    cron: "0 9 * * 1"
+    timezone: "Europe/Istanbul"
+    endpoint: "{{BASE_URL}}/api/cron/weekly-summary"
+    method: POST
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    enabled: true

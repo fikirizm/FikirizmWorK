@@ -12,6 +12,7 @@ import logging
 from routes import router
 from seed import seed
 from deps import client
+from storage import init_storage
 
 app = FastAPI(title="Fikirizm Cloud API")
 
@@ -36,6 +37,11 @@ async def startup():
         logger.info("Seed tamamlandı")
     except Exception as e:
         logger.error(f"Seed hatası: {e}")
+    try:
+        init_storage()
+        logger.info("Obje depolama hazır")
+    except Exception as e:
+        logger.error(f"Depolama başlatma hatası: {e}")
 
 
 @app.on_event("shutdown")
