@@ -70,6 +70,13 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## İterasyon 19 (2026-06) — Mobil optimizasyon + login logo büyütme
+- 🐛 **Mobil bütçe scroll**: recharts `ResponsiveContainer`, `min-w-0` olmayan grid hücresinde yatay taşmaya yol açıyordu → sayfa mobilde başa dönemiyordu. Grafik kartına `min-w-0 overflow-hidden` eklendi.
+- 🐛 **Mobil görev paneli (TaskDrawer)**: SheetContent `h-[100dvh] max-h-[100dvh] w-full max-w-full overflow-x-hidden overscroll-contain` → panel artık mobilde tam genişlikte sabit, yatay kaymıyor.
+- 🛡️ Global yatay taşma koruması: `html, body, #root { overflow-x:hidden }`; AppShell `<main>` `overflow-x-hidden overscroll-contain`.
+- Login logosu büyütüldü (h-24 sm:h-28).
+- ✅ testing_agent (iteration_9) %100: 18/18 taşma kontrolü diff=0 (tüm sayfalar + drawer açıkken), bütçe başa dönme, drawer sabitliği, masaüstü regresyon.
+
 ## İterasyon 18 (2026-06) — Login ürünleştirme + sidebar logo büyütme
 - Login tamamen yeniden tasarlandı: split panel yerine **açık renk (#f3f3f7) zeminde ortalanmış premium kart** (bg-white, yumuşak gölge), üstte büyük okunur logo (h-16), Google ile devam + ayraç + form, mor (#5859a3) marka butonu; arka planda ince mor/sarı radial ışıma + nokta-grid. `login-*` test id'leri korundu; Google auth redirect mantığı değişmedi.
 - Sidebar başlığı h-16'ya, logo h-11'e büyütüldü — okunabilirlik sağlandı.

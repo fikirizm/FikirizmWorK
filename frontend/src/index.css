@@ -83,6 +83,8 @@ body {
 .tabular-nums { font-variant-numeric: tabular-nums; }
 .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 
+html, body, #root { max-width: 100%; overflow-x: hidden; }
+
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 999px; }

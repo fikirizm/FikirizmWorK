@@ -115,7 +115,7 @@ export function BudgetView({ project, tasks = [] }) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm">
           <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Planlanan vs Gerçekleşen</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chartData}>

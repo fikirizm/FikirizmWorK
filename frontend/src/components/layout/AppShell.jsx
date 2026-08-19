@@ -35,7 +35,7 @@ export function AppShell({ children }) {
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
           <Topbar breadcrumb={breadcrumb} onOpenSearch={() => setSearchOpen(true)} />
-          <main className="flex-1 overflow-y-auto" data-testid="main-content">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain" data-testid="main-content">
             {children}
           </main>
         </div>

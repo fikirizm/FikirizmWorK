@@ -1,0 +1,30 @@
+{
+  "summary": "Mobile responsiveness verification (390x844) + desktop regression (1440x900) for iteration 9 fixes: global html/body/#root overflow-x:hidden, AppShell <main> overflow-x-hidden overscroll-contain, BudgetView chart card min-w-0 overflow-hidden, TaskDrawer SheetContent h-[100dvh] w-full max-w-full overflow-x-hidden overscroll-contain, and Login logo size. ALL 18 overflow checks passed (diff=0 on every screen).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "verified_features": [
+    "MOBILE OVERFLOW: Zero horizontal overflow (documentElement.scrollWidth - clientWidth = 0) on Login, Dashboard (/panel), Project default+list+kanban+budget+calendar+gantt views, Ideas (/fikirler), Members (/uyeler), Activity (/aktivite), Settings (/ayarlar), AND while TaskDrawer is open. Checked at both fully-scrolled-to-bottom and back-to-top for every project view.",
+    "BUDGET MOBILE SCROLL: Bütçe view scrolls to bottom then back to top (main scrollTop=0), 'Bütçe Planı' header is visible after scrollToTop=true. recharts container width=300px, x=45, right=345 (innerW=390) — chart fits inside the mobile screen. Chart card wrapper (min-w-0 overflow-hidden) prevents recharts horizontal drift. No diagonal/horizontal drift observed. NOTE: only project on this account (Girona Gezisi 2026) has 0 budget items so chart displays zero-value bars; layout & scroll behaviour still verified.",
+    "TASK DRAWER MOBILE: TaskDrawer opens with box {x:0, y:0, width:390, height:844} — full width on mobile, positioned flush (no horizontal shift). No page-level horizontal overflow while open (diff=0). Internal vertical scroll works (drawer.scrollTop reached 153 after scrollTo(0,400)). Closes cleanly on Escape.",
+    "LOGIN MOBILE: Logo rendered at 139x96 px (h-24 = 96px), clearly visible on 390px viewport. Form usable; login with owner creds landed on /panel with 'Tekrar hoş geldiniz!' toast.",
+    "DESKTOP REGRESSION (1440x900): Dashboard, project Kanban+List+Budget views, Settings — all zero overflow. TaskDrawer on desktop = 576px width (sm:max-w-xl). Login OK."
+  ],
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "index.css L86 applies overflow-x:hidden to html/body/#root globally — correct fix and works cross-page.",
+    "AppShell.jsx <main> now has overflow-x-hidden + overscroll-contain — verified stops horizontal drift while allowing internal vertical scroll.",
+    "BudgetView chart card wrapper 'min-w-0 overflow-hidden' — critical since recharts ResponsiveContainer measures parent width; without min-w-0 the flex/grid parent would let the SVG force horizontal overflow on <400px screens. Verified.",
+    "TaskDrawer SheetContent 'h-[100dvh] max-h-[100dvh] w-full max-w-full overflow-x-hidden overscroll-contain' — drawer no longer 'wanders'; occupies full mobile viewport and scrolls only inside. On desktop the 'sm:max-w-xl' cap still applies (576px observed).",
+    "Non-blocking noise: WS 403 (known preview env), pre-existing /me 401 on /giris — no impact.",
+    "Test-data note: the 'ingobiosport@gmail.com' owner account in this preview points to workspace 'BikeAway' which only contains 'Girona Gezisi 2026' (0 budget items). Projects 'Ürün Geliştirme' / 'Bisiklet Festivali 2026' referenced in the request were not present on this account — verification was done with the available project, which still exercises all impacted layouts."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend-only requested)", "frontend": "100% (18/18 overflow checks + all 5 primary verifications)"},
+  "test_credentials": "Owner: ingobiosport@gmail.com / Fikirizm2025! — verified.",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 4 mobile fixes verified. If retesting, note this preview account only has 'Girona Gezisi 2026' (empty budget). For richer Budget assertions (populated chart values, multiple tables), seed budget items via API or use a different workspace. Sidebar-nav click inside mobile sheet was flaky ('element not visible' after Sheet transition) — fallback of direct URL navigation with 2s wait worked and did not race the bootstrap on this run.",
+  "rca of the issue": "N/A — verification only. Original bug RCA (from main agent): (1) recharts ResponsiveContainer without min-w-0 parent forced page-level horizontal overflow on mobile Budget view, breaking scroll-back-to-top; (2) TaskDrawer SheetContent lacked explicit w-full/max-w-full/overflow-x-hidden on mobile, causing it to 'wander' horizontally. Fixes verified resolved both."
+}

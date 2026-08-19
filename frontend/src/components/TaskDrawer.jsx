@@ -186,7 +186,7 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto p-0 sm:max-w-xl" data-testid="task-drawer">
+      <SheetContent className="h-[100dvh] max-h-[100dvh] w-full max-w-full overflow-y-auto overflow-x-hidden overscroll-contain p-0 sm:max-w-xl" data-testid="task-drawer">
         {!task ? (
           <div className="space-y-4 p-6">
             <div className="h-6 w-2/3 animate-pulse rounded bg-muted" />
