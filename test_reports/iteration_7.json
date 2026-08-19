@@ -1,0 +1,34 @@
+{
+  "summary": "E2E frontend verification of 3 targeted fixes on Fikirizm Cloud: (1) access control after member removal, (2) activity feed scoping per member, (3) budget custom category on-the-fly. All 3 features PASS end-to-end. No new issues found. WS 403 and Radix DialogTitle warning pre-existing and ignored per request.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_features": [
+    "ACCESS CONTROL: Owner logged in and created new project 'YetkiTest 889' (prj_a54d47c453bc4464) with Mert included. Logged in as Mert -> sidebar showed 'YetkiTest 889', GET /api/tasks?project_id=... returned 200. Owner opened project-settings-btn, unchecked settings-member-user_888a7db57b7f426f (Mert), clicked settings-save-btn (toast 'Proje ayarları güncellendi'). Fresh login as Mert -> sidebar NO LONGER shows YetkiTest 889, GET /api/tasks?project_id=... returned 403, direct URL /proje/<id> shows 'Proje bulunamadı'. Bootstrap refetch on fresh session works.",
+    "ACTIVITY FEED SCOPING: Owner /api/activities returned 21 activities; Mert /api/activities returned 16 (fewer). On /aktivite page Mert's list did NOT contain any activity referencing 'Girona' or 'Operasyon (Gizli)' (projects he is not a member of). After being removed from YetkiTest, Mert's activity badge dropped to 14. Owner sees strictly more activities than Mert as required.",
+    "BUDGET CUSTOM CATEGORY: In BudgetItemDialog with Tür=Gider, clicked budget-add-category-toggle -> budget-new-category-input + budget-new-category-save appeared. Typed 'Sigorta', saved -> toast 'Kategori eklendi', category auto-selected in budget-category-select. Filled description/planned (1000)/actual (500), clicked budget-save-btn -> 'Kalem eklendi' toast, item visible in list and Kategori Bazlı Özet ('Sigorta 500 / 1000'). Reopened dialog: 'Sigorta' visible in the category dropdown alongside Genel Gider|Malzeme|Hizmet|Personel — persisted.",
+    "REGRESSION: Login (owner + Mert) OK. Dashboard loads. Sidebar renders. Project Pano view renders. No blocking console errors (only pre-existing 401 for /me polling on /giris page + Radix a11y warning + WS 403)."
+  ],
+  "test_report_links": [],
+  "action_items": [
+    "None critical. Backend already curl-verified by main agent and frontend verified end-to-end here.",
+    "Optional: consider debouncing/short-circuiting bootstrap refetch on login page to avoid initial 401 console noise (pre-existing, cosmetic)."
+  ],
+  "critical_code_review_comments": [
+    "AppData.jsx bootstrap refetchInterval=20s is a reasonable polling-fallback while WS is unavailable in preview; consider exposing a manual refresh trigger via WS reconnect event when available in prod.",
+    "BudgetView.jsx add-new-category flow is clean and uses the new POST endpoint; auto-selects on success — good UX.",
+    "Activity project_id backfill migration (_backfill_activity_projects) runs at startup — good; ensure it's idempotent (looks like it is via find with missing project_id filter).",
+    "log_activity signature now takes project_id — verify all call sites throughout routes.py were updated (not sampled here since backend curl was already validated by main agent)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (already verified via curl by main agent)", "frontend": "100% (3/3 primary features + regression)"},
+  "test_credentials": "Owner: ingobiosport@gmail.com / Fikirizm2025! (verified). Member: mert@fikirizm.com / Demo2025! (verified).",
+  "seed_data_creation": "Created project 'YetkiTest 889' (prj_a54d47c453bc4464) with 1 budget item under new category 'Sigorta'. DELETED via API at end of test (DELETE /api/projects/prj_a54d47c453bc4464 -> 200). Note: category 'Sigorta' may still be present on the project scope; project deletion should cascade but not verified explicitly. Recent-activity entries for the deleted project may remain until next startup migration runs (_backfill_activity_projects deletes orphans).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 3 fixes (removed-member sidebar hides project on fresh session, activity feed filtered by accessible projects for non-privileged users, budget POST categories inline) verified E2E. Owner=21 acts, Mert=16 acts (initially, dropped to 14 after removal). Project created for test was cleaned up. WS 403 in preview is env-only; refetchInterval=20s polling handles updates.",
+  "rca of the issue": "N/A — verifying fixes only. Fixes appear correct: (1) refetchInterval+refetchOnWindowFocus in AppData bootstrap causes sidebar to sync after removal (verified via fresh login/refresh path). (2) get_activities filters by accessible_project_ids for non-owner/admin (verified via count 21 vs 16 and absent Girona/Operasyon entries). (3) POST /api/projects/{id}/budget/categories returns created category and BudgetView auto-selects + persists it (verified in UI)."
+}

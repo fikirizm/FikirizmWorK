@@ -8,6 +8,8 @@ export function AppDataProvider({ children }) {
   const { data, isLoading } = useQuery({
     queryKey: ["bootstrap"],
     queryFn: async () => (await API.get("/bootstrap")).data,
+    refetchInterval: 20000,
+    refetchOnWindowFocus: true,
   });
 
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState(null);

@@ -22,7 +22,7 @@ from realtime import manager
 from models import (
     RegisterBody, LoginBody, SessionBody, WorkspaceBody, ProjectBody, ProjectUpdate,
     TaskBody, TaskUpdate, BulkUpdate, CommentBody, IdeaBody, IdeaUpdate, InviteBody,
-    BudgetBody, BudgetUpdate, AcceptInviteBody, MemberUpdate, EmailSettingsBody, TestEmailBody,
+    BudgetBody, BudgetUpdate, BudgetCategoryBody, AcceptInviteBody, MemberUpdate, EmailSettingsBody, TestEmailBody,
     NotifPrefsBody, ProfileUpdate, OrgUpdate, WorkspaceUpdate,
 )
 from templates_data import TEMPLATES, get_template
@@ -124,11 +124,12 @@ def iso_offset_days(days):
     return (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
 
 
-async def log_activity(org_id, workspace_id, user, action, target=""):
+async def log_activity(org_id, workspace_id, user, action, target="", project_id=None):
     doc = {
         "id": new_id("act_"),
         "org_id": org_id,
         "workspace_id": workspace_id,
+        "project_id": project_id,
         "user_id": user["user_id"],
         "user_name": user.get("name", ""),
         "action": action,
@@ -311,7 +312,7 @@ async def create_project(body: ProjectBody, user: dict = Depends(get_current_use
     await db.projects.insert_one(proj)
     out = {k: v for k, v in proj.items() if k != "_id"}
     await _email_new_members([m for m in members if m != user["user_id"]], user, body.name)
-    await log_activity(user["org_id"], body.workspace_id, user, "proje oluşturdu", body.name)
+    await log_activity(user["org_id"], body.workspace_id, user, "proje oluşturdu", body.name, project_id=proj["id"])
     await manager.broadcast(body.workspace_id, {"type": "project", "action": "create", "data": out})
     return out
 
@@ -407,7 +408,7 @@ async def create_task(body: TaskBody, user: dict = Depends(get_current_user)):
             await create_notification(user["org_id"], aid, "assign", f"{user['name']} sizi bir göreve atadı: {task['title']}", f"/proje/{body.project_id}")
     proj_name = proj["name"] if proj else ""
     await _email_new_assignees(task["assignees"], user, task["title"], proj_name, body.project_id)
-    await log_activity(user["org_id"], body.workspace_id, user, "görev oluşturdu", body.title)
+    await log_activity(user["org_id"], body.workspace_id, user, "görev oluşturdu", body.title, project_id=body.project_id)
     await manager.broadcast(body.workspace_id, {"type": "task", "action": "create", "data": out})
     return out
 
@@ -455,7 +456,7 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_c
         if new_assignees:
             await _email_new_assignees(new_assignees, user, task["title"], "", task.get("project_id"))
     if "status" in updates and updates["status"] != existing.get("status"):
-        await log_activity(user["org_id"], task["workspace_id"], user, "görev durumunu değiştirdi", task["title"])
+        await log_activity(user["org_id"], task["workspace_id"], user, "görev durumunu değiştirdi", task["title"], project_id=task.get("project_id"))
     await manager.broadcast(task["workspace_id"], {"type": "task", "action": "update", "data": task})
     return task
 
@@ -478,7 +479,7 @@ async def promote_subtask(task_id: str, user: dict = Depends(get_current_user)):
     count = await db.tasks.count_documents({"project_id": task["project_id"], "status": task.get("status"), "parent_id": None})
     await db.tasks.update_one({"id": task_id}, {"$set": {"parent_id": None, "order": count}})
     task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
-    await log_activity(user["org_id"], task["workspace_id"], user, "alt görevi ana göreve dönüştürdü", task["title"])
+    await log_activity(user["org_id"], task["workspace_id"], user, "alt görevi ana göreve dönüştürdü", task["title"], project_id=task.get("project_id"))
     await manager.broadcast(task["workspace_id"], {"type": "task", "action": "update", "data": task})
     return task
 
@@ -546,7 +547,7 @@ async def create_idea(body: IdeaBody, user: dict = Depends(get_current_user)):
     out = {k: v for k, v in idea.items() if k != "_id"}
     out["vote_count"] = 0
     out["comment_count"] = 0
-    await log_activity(user["org_id"], body.workspace_id, user, "fikir ekledi", body.title)
+    await log_activity(user["org_id"], body.workspace_id, user, "fikir ekledi", body.title, project_id=body.project_id)
     await manager.broadcast(body.workspace_id, {"type": "idea", "action": "create", "data": out})
     return out
 
@@ -564,7 +565,7 @@ async def update_idea(idea_id: str, body: IdeaUpdate, user: dict = Depends(get_c
     if "status" in updates and updates["status"] != existing.get("status"):
         if existing.get("created_by") != user["user_id"]:
             await create_notification(user["org_id"], existing["created_by"], "idea", f"Fikrinizin durumu güncellendi: {idea['title']}", "/fikirler")
-        await log_activity(user["org_id"], idea["workspace_id"], user, "fikir durumunu değiştirdi", idea["title"])
+        await log_activity(user["org_id"], idea["workspace_id"], user, "fikir durumunu değiştirdi", idea["title"], project_id=idea.get("project_id"))
     await manager.broadcast(idea["workspace_id"], {"type": "idea", "action": "update", "data": idea})
     return idea
 
@@ -634,7 +635,7 @@ async def convert_idea(idea_id: str, user: dict = Depends(get_current_user)):
     await db.tasks.insert_one(task)
     await db.ideas.update_one({"id": idea_id}, {"$set": {"status": "approved", "converted_task_id": task["id"]}})
     out = {k: v for k, v in task.items() if k != "_id"}
-    await log_activity(user["org_id"], idea["workspace_id"], user, "fikri göreve dönüştürdü", idea["title"])
+    await log_activity(user["org_id"], idea["workspace_id"], user, "fikri göreve dönüştürdü", idea["title"], project_id=project_id)
     await manager.broadcast(idea["workspace_id"], {"type": "task", "action": "create", "data": out})
     return {"task": out, "project_id": project_id}
 
@@ -692,7 +693,13 @@ async def dashboard(user: dict = Depends(get_current_user), workspace_id: Option
         for a in t.get("assignees", []):
             workload[a] = workload.get(a, 0) + 1
     my_tasks = [t for t in open_tasks if user["user_id"] in t.get("assignees", [])]
-    activities = await db.activities.find(query if allowed is None or "project_id" not in query else {"org_id": user["org_id"], **({"workspace_id": workspace_id} if workspace_id else {})}, {"_id": 0}).to_list(500)
+    acts_query = {"org_id": user["org_id"]}
+    if workspace_id:
+        acts_query["workspace_id"] = workspace_id
+    activities = await db.activities.find(acts_query, {"_id": 0}).to_list(500)
+    if allowed is not None:
+        aset = set(allowed)
+        activities = [a for a in activities if not a.get("project_id") or a["project_id"] in aset]
     activities.sort(key=lambda a: a.get("created_at", ""), reverse=True)
     return {
         "open_count": len(open_tasks),
@@ -870,7 +877,11 @@ async def get_activities(user: dict = Depends(get_current_user), workspace_id: O
     query = {"org_id": user["org_id"]}
     if workspace_id:
         query["workspace_id"] = workspace_id
-    acts = await db.activities.find(query, {"_id": 0}).to_list(200)
+    acts = await db.activities.find(query, {"_id": 0}).to_list(300)
+    allowed = await accessible_project_ids(user)
+    if allowed is not None:
+        aset = set(allowed)
+        acts = [a for a in acts if not a.get("project_id") or a["project_id"] in aset]
     acts.sort(key=lambda a: a.get("created_at", ""), reverse=True)
     return acts[:50]
 
@@ -954,9 +965,29 @@ async def create_budget_item(project_id: str, body: BudgetBody, user: dict = Dep
     out = {k: v for k, v in item.items() if k != "_id"}
     before = await db.budget_items.find({"project_id": project_id, "id": {"$ne": item["id"]}}, {"_id": 0}).to_list(1000)
     await _budget_alert_if_crossed(proj, before, before + [out], user)
-    await log_activity(user["org_id"], proj["workspace_id"], user, "bütçe kalemi ekledi", body.category)
+    await log_activity(user["org_id"], proj["workspace_id"], user, "bütçe kalemi ekledi", body.category, project_id=project_id)
     await manager.broadcast(proj["workspace_id"], {"type": "budget", "action": "create", "data": out})
     return out
+
+
+@router.post("/projects/{project_id}/budget/categories")
+async def add_budget_category(project_id: str, body: BudgetCategoryBody, user: dict = Depends(get_current_user)):
+    proj = await db.projects.find_one({"id": project_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not proj or not can_edit_budget(user, proj):
+        raise HTTPException(status_code=403, detail="Bütçeyi düzenleme yetkiniz yok")
+    if body.type not in ("income", "expense"):
+        raise HTTPException(status_code=400, detail="Geçersiz kategori türü")
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Kategori adı boş olamaz")
+    cats = proj.get("budget_categories") or {"income": [], "expense": []}
+    lst = list(cats.get(body.type, []))
+    if name not in lst:
+        lst.append(name)
+        cats[body.type] = lst
+        await db.projects.update_one({"id": project_id}, {"$set": {"budget_categories": cats}})
+        await manager.broadcast(proj["workspace_id"], {"type": "project", "action": "update", "data": {**proj, "budget_categories": cats}})
+    return {"categories": cats}
 
 
 @router.patch("/budget/{item_id}")

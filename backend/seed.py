@@ -32,6 +32,46 @@ async def ensure_indexes():
     await db.budget_items.create_index("project_id")
 
 
+async def _backfill_activity_projects(org_id):
+    acts = await db.activities.find(
+        {"org_id": org_id, "$or": [{"project_id": {"$exists": False}}, {"project_id": None}]},
+        {"_id": 0}).to_list(5000)
+    if not acts:
+        return
+    projects = await db.projects.find({"org_id": org_id}, {"_id": 0}).to_list(2000)
+    tasks = await db.tasks.find({"org_id": org_id}, {"_id": 0}).to_list(5000)
+    ideas = await db.ideas.find({"org_id": org_id}, {"_id": 0}).to_list(2000)
+    budget = await db.budget_items.find({"org_id": org_id}, {"_id": 0}).to_list(5000)
+    proj_by_name, task_by_title, idea_by_title, budget_by_cat = {}, {}, {}, {}
+    for p in projects:
+        proj_by_name.setdefault((p["workspace_id"], p["name"]), p["id"])
+    for t in tasks:
+        task_by_title.setdefault((t["workspace_id"], t["title"]), t.get("project_id"))
+    for i in ideas:
+        idea_by_title.setdefault((i["workspace_id"], i["title"]), i.get("project_id"))
+    for b in budget:
+        budget_by_cat.setdefault((b["workspace_id"], b.get("category")), b.get("project_id"))
+    for a in acts:
+        ws, tgt, act = a.get("workspace_id"), a.get("target"), a.get("action", "")
+        matched, pid = True, None
+        if "proje" in act:
+            matched = (ws, tgt) in proj_by_name
+            pid = proj_by_name.get((ws, tgt))
+        elif "fikir" in act:
+            matched = (ws, tgt) in idea_by_title
+            pid = idea_by_title.get((ws, tgt))
+        elif "görev" in act:
+            matched = (ws, tgt) in task_by_title
+            pid = task_by_title.get((ws, tgt))
+        elif "bütçe" in act:
+            matched = (ws, tgt) in budget_by_cat
+            pid = budget_by_cat.get((ws, tgt))
+        if matched:
+            await db.activities.update_one({"id": a["id"]}, {"$set": {"project_id": pid}})
+        else:
+            await db.activities.delete_one({"id": a["id"]})
+
+
 async def _migrate(org_id):
     # backfill new project fields for existing demo projects
     projs = await db.projects.find({"org_id": org_id}, {"_id": 0}).to_list(1000)
@@ -51,6 +91,7 @@ async def _migrate(org_id):
             updates["budget_categories"] = TEMPLATES["general"]["budget_categories"]
         if updates:
             await db.projects.update_one({"id": p["id"]}, {"$set": updates})
+    await _backfill_activity_projects(org_id)
 
 
 async def seed():
@@ -222,9 +263,9 @@ async def seed():
     await db.ideas.insert_many(ideas)
 
     activities = [
-        {"id": nid("act_"), "org_id": org_id, "workspace_id": ws_id, "user_id": ids[1],
+        {"id": nid("act_"), "org_id": org_id, "workspace_id": ws_id, "project_id": p4, "user_id": ids[1],
          "user_name": "Elif Kaya", "action": "proje oluşturdu", "target": "Bisiklet Festivali 2026", "created_at": iso_offset(-1)},
-        {"id": nid("act_"), "org_id": org_id, "workspace_id": ws_id, "user_id": ids[0],
+        {"id": nid("act_"), "org_id": org_id, "workspace_id": ws_id, "project_id": p4, "user_id": ids[0],
          "user_name": "Fikirizm Yöneticisi", "action": "bütçe kalemi ekledi", "target": "Sponsorluk", "created_at": iso_offset(-2)},
     ]
     await db.activities.insert_many(activities)

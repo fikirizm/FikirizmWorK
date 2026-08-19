@@ -212,9 +212,16 @@ function BudgetItemDialog({ open, onOpenChange, project, categories, tasks, memb
   const [responsible, setResponsible] = useState("none");
   const [taskId, setTaskId] = useState("none");
   const [saving, setSaving] = useState(false);
+  const [localCats, setLocalCats] = useState(categories);
+  const [addingCat, setAddingCat] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [catSaving, setCatSaving] = useState(false);
+
+  useEffect(() => { setLocalCats(categories); }, [categories]);
 
   useEffect(() => {
     if (open) {
+      setAddingCat(false); setNewCatName("");
       if (item) {
         setType(item.type); setCategory(item.category); setDescription(item.description || "");
         setPlanned(String(item.planned_amount ?? "")); setActual(String(item.actual_amount ?? ""));
@@ -226,7 +233,23 @@ function BudgetItemDialog({ open, onOpenChange, project, categories, tasks, memb
     }
   }, [open, item]);
 
-  const catList = categories?.[type] || [];
+  const catList = localCats?.[type] || [];
+
+  const addCategory = async () => {
+    const nm = newCatName.trim();
+    if (!nm) return;
+    setCatSaving(true);
+    try {
+      const { data } = await API.post(`/projects/${project.id}/budget/categories`, { type, name: nm });
+      setLocalCats(data.categories);
+      setCategory(nm);
+      setAddingCat(false); setNewCatName("");
+      toast.success("Kategori eklendi");
+      onDone();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Kategori eklenemedi");
+    } finally { setCatSaving(false); }
+  };
 
   const save = async () => {
     if (!category || !description) { toast.error("Kategori ve açıklama gerekli"); return; }
@@ -255,7 +278,7 @@ function BudgetItemDialog({ open, onOpenChange, project, categories, tasks, memb
         <div className="space-y-3 py-2">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label>Tür</Label>
-              <Select value={type} onValueChange={(v) => { setType(v); setCategory(""); }}>
+              <Select value={type} onValueChange={(v) => { setType(v); setCategory(""); setAddingCat(false); }}>
                 <SelectTrigger data-testid="budget-type-select"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="income">Gelir</SelectItem>
@@ -263,13 +286,28 @@ function BudgetItemDialog({ open, onOpenChange, project, categories, tasks, memb
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5"><Label>Kategori</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger data-testid="budget-category-select"><SelectValue placeholder="Seçin" /></SelectTrigger>
-                <SelectContent>
-                  {catList.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label>Kategori</Label>
+                <button type="button" onClick={() => setAddingCat((v) => !v)} className="flex items-center gap-0.5 text-xs font-medium text-primary hover:underline" data-testid="budget-add-category-toggle">
+                  <Plus className="h-3 w-3" /> {addingCat ? "Vazgeç" : "Yeni"}
+                </button>
+              </div>
+              {addingCat ? (
+                <div className="flex gap-1.5">
+                  <Input value={newCatName} onChange={(e) => setNewCatName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addCategory()}
+                    placeholder="Yeni kategori adı" autoFocus data-testid="budget-new-category-input" />
+                  <Button type="button" size="sm" onClick={addCategory} disabled={catSaving || !newCatName.trim()} data-testid="budget-new-category-save">Ekle</Button>
+                </div>
+              ) : (
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger data-testid="budget-category-select"><SelectValue placeholder="Seçin" /></SelectTrigger>
+                  <SelectContent>
+                    {catList.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
           <div className="space-y-1.5"><Label>Açıklama</Label>

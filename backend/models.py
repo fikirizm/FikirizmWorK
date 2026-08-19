@@ -151,6 +151,11 @@ class AcceptInviteBody(BaseModel):
     password: str = Field(min_length=6)
 
 
+class BudgetCategoryBody(BaseModel):
+    type: str  # income | expense
+    name: str
+
+
 class BudgetBody(BaseModel):
     type: str  # income | expense
     category: str

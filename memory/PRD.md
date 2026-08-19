@@ -70,6 +70,15 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## Fixes & Notes — İterasyon 8 (2026-06)
+- 🐛 **Erişim kontrolü (üye çıkarma)**: Bir üye projeden çıkarıldığında sidebar'ının güncellenmemesi düzeltildi. `AppData` bootstrap sorgusuna `refetchInterval: 20s` + `refetchOnWindowFocus` eklendi; çıkarılan üye ~20sn içinde (veya yeniden girişte) projeyi görmez, `GET /tasks?project_id=` 403 döner. (Backend zaten doğru filtreliyordu.)
+- 🐛 **Aktivite akışı sızıntısı**: Aktivitelere `project_id` eklendi; `GET /api/activities` ve dashboard `recent_activities` yetkisiz kullanıcılar için erişilebilir projelere göre filtreleniyor (Owner/Admin hepsini görür). Başlangıç migrasyonu (`_backfill_activity_projects`) eski aktivitelere `project_id` doldurur ve silinmiş varlıklara ait sahipsiz aktiviteleri temizler. Doğrulama: Owner 17, Üye Mert 14 aktivite (Girona/Operasyon gizli kaldı).
+- ✨ **Bütçe: anında kategori ekleme**: Bütçe kalemi diyaloğunda "Yeni" ile yeni kategori tanımlanabiliyor → `POST /api/projects/{id}/budget/categories` (projeye kalıcı eklenir, otomatik seçilir).
+- ✅ Test: iteration_7.json — 3/3 özellik frontend E2E %100.
+- ℹ️ Not: Zaman Çizelgesi (Gantt) hâlâ salt-görünümdür; yalnızca tarih atanmış görevleri gösterir. Çizelge üzerinden sürükleyerek tarih atama bir sonraki geliştirme adayı.
+- ⏳ Bekleyen (kullanıcı talebi): Uygulama içi bildirim (çan) tercihleri, sürükle-bırakla görevi alt göreve alma, Profil'de şifre değiştirme.
+
+
 ## Implemented — İterasyon 7 (2026-06)
 - ✅ **Birleşik Ayarlar sayfası** (`/ayarlar`): sekmeli yapı — **Profil** (ad düzenleme + rol/e-posta), **Bildirimler**, **Mail** (Owner/Admin), **Çalışma Alanı** (Owner/Admin: org & workspace adı). Eski `/ayarlar/mail` artık `/ayarlar`'a yönlendiriyor. Sidebar'daki "Mail Ayarları" bağlantısı "Ayarlar" ile değiştirildi ve tüm kullanıcılara açık.
 - ✅ **Emergent Mail seçeneği kaldırıldı**: Mail sekmesinde artık yalnızca Özel SMTP / Amazon SES var; sağlayıcı seçici kaldırıldı, varsayılan provider `smtp`.
