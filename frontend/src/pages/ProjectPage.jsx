@@ -55,6 +55,7 @@ export default function ProjectPage() {
     queryKey: ["tasks", projectId],
     queryFn: async () => (await API.get(`/tasks?project_id=${projectId}`)).data,
     enabled: !!projectId,
+    refetchInterval: 15000,
   });
 
   useEffect(() => {
@@ -172,6 +173,7 @@ function ProjectSettingsDialog({ open, onOpenChange, project, members }) {
   const [selMembers, setSelMembers] = useState([]);
   const [currency, setCurrency] = useState("TRY");
   const [policy, setPolicy] = useState("admins");
+  const [threshold, setThreshold] = useState(100);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -179,6 +181,7 @@ function ProjectSettingsDialog({ open, onOpenChange, project, members }) {
       setSelMembers(project.members || []);
       setCurrency(project.currency || "TRY");
       setPolicy(project.budget_policy || "admins");
+      setThreshold(project.budget_threshold || 100);
     }
   }, [open, project]);
 
@@ -188,7 +191,7 @@ function ProjectSettingsDialog({ open, onOpenChange, project, members }) {
   const save = async () => {
     setSaving(true);
     try {
-      await API.patch(`/projects/${project.id}`, { members: selMembers, currency, budget_policy: policy });
+      await API.patch(`/projects/${project.id}`, { members: selMembers, currency, budget_policy: policy, budget_threshold: Number(threshold) });
       await queryClient.invalidateQueries({ queryKey: ["bootstrap"] });
       await queryClient.invalidateQueries({ queryKey: ["budget", project.id] });
       toast.success("Proje ayarları güncellendi");
@@ -238,6 +241,19 @@ function ProjectSettingsDialog({ open, onOpenChange, project, members }) {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Bütçe uyarı eşiği</label>
+            <p className="text-xs text-muted-foreground">Gerçekleşen gider, planlananın bu oranını aşınca yöneticilere e-posta gider.</p>
+            <Select value={String(threshold)} onValueChange={(v) => setThreshold(v)}>
+              <SelectTrigger data-testid="settings-threshold-select"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="80">%80</SelectItem>
+                <SelectItem value="90">%90</SelectItem>
+                <SelectItem value="100">%100 (planı aşınca)</SelectItem>
+                <SelectItem value="110">%110</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter>

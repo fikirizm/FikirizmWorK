@@ -186,6 +186,21 @@ async def email_budget_alert(to_email, to_name, project_name, actual, planned, c
         logger.warning(f"budget alert email failed: {e}")
 
 
+async def email_daily_reminder(to_email, to_name, titles):
+    subject = f"Günlük hatırlatma: {len(titles)} görevin son tarihi yaklaşıyor"
+    items = "".join(f"<li>{escape(t)}</li>" for t in titles[:15])
+    inner = (
+        f"<p>Merhaba {escape(to_name or '')},</p>"
+        "<p>Bugün veya yarın son tarihi olan görevleriniz:</p>"
+        f"<ul>{items}</ul>"
+        "<p>Detaylar için uygulamaya giriş yapın.</p>"
+    )
+    try:
+        await send_email(to=to_email, subject=subject, html=_shell(inner))
+    except Exception as e:
+        logger.warning(f"daily reminder email failed: {e}")
+
+
 async def email_weekly_summary(to_email, to_name, open_count, overdue_titles):
     subject = f"Haftalık özet: {open_count} açık görev"
     od = ""

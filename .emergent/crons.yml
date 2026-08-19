@@ -6,5 +6,11 @@ crons:
     timezone: "Europe/Istanbul"
     endpoint: "{{BASE_URL}}/api/cron/weekly-summary"
     method: POST
-    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    enabled: true
+  - name: daily-reminder
+    description: "Her sabah 08:00 (İstanbul) son tarihi bugün/yarın olan görevler için kişiye özel hatırlatma"
+    cron: "0 8 * * *"
+    timezone: "Europe/Istanbul"
+    endpoint: "{{BASE_URL}}/api/cron/daily-reminder"
+    method: POST
     enabled: true

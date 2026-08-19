@@ -22,11 +22,11 @@ from realtime import manager
 from models import (
     RegisterBody, LoginBody, SessionBody, WorkspaceBody, ProjectBody, ProjectUpdate,
     TaskBody, TaskUpdate, BulkUpdate, CommentBody, IdeaBody, IdeaUpdate, InviteBody,
-    BudgetBody, BudgetUpdate, AcceptInviteBody,
+    BudgetBody, BudgetUpdate, AcceptInviteBody, MemberUpdate,
 )
 from templates_data import TEMPLATES, get_template
 from mailer import (email_task_assigned, email_project_added, email_invite,
-                    email_budget_alert, email_weekly_summary)
+                    email_budget_alert, email_weekly_summary, email_daily_reminder)
 from storage import put_object, get_object, mime_for, APP_NAME
 
 logger = logging.getLogger("fikirizm.routes")
@@ -290,6 +290,7 @@ async def create_project(body: ProjectBody, user: dict = Depends(get_current_use
         "icon": body.icon or tmpl["icon"], "template": body.template or "general",
         "statuses": tmpl["statuses"], "budget_categories": tmpl["budget_categories"],
         "currency": body.currency or "TRY", "budget_policy": body.budget_policy or "admins",
+        "budget_threshold": body.budget_threshold or 100,
         "members": members, "created_at": now_iso(), "created_by": user["user_id"],
     }
     await db.projects.insert_one(proj)
@@ -733,6 +734,58 @@ async def invite_member(body: InviteBody, user: dict = Depends(get_current_user)
     return out
 
 
+@router.patch("/members/{member_id}")
+async def update_member(member_id: str, body: MemberUpdate, user: dict = Depends(get_current_user)):
+    if not is_privileged(user):
+        raise HTTPException(status_code=403, detail="Yetkiniz yok")
+    target = await db.users.find_one({"user_id": member_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not target:
+        raise HTTPException(status_code=404, detail="Üye bulunamadı")
+    if target.get("role") == "owner":
+        raise HTTPException(status_code=400, detail="Sahibin rolü değiştirilemez")
+    if body.role == "owner" and user.get("role") != "owner":
+        raise HTTPException(status_code=403, detail="Sahiplik atama yetkiniz yok")
+    await db.users.update_one({"user_id": member_id}, {"$set": {"role": body.role}})
+    return {"ok": True, "role": body.role}
+
+
+@router.delete("/members/{member_id}")
+async def remove_member(member_id: str, user: dict = Depends(get_current_user)):
+    if not is_privileged(user):
+        raise HTTPException(status_code=403, detail="Yetkiniz yok")
+    target = await db.users.find_one({"user_id": member_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not target:
+        return {"ok": True}
+    if target.get("role") == "owner":
+        raise HTTPException(status_code=400, detail="Sahip çıkarılamaz")
+    if member_id == user["user_id"]:
+        raise HTTPException(status_code=400, detail="Kendinizi çıkaramazsınız")
+    await db.users.delete_one({"user_id": member_id})
+    await db.memberships.delete_many({"user_id": member_id})
+    await db.projects.update_many({"org_id": user["org_id"]}, {"$pull": {"members": member_id}})
+    await db.tasks.update_many({"org_id": user["org_id"]}, {"$pull": {"assignees": member_id}})
+    return {"ok": True}
+
+
+@router.post("/members/{member_id}/resend-invite")
+async def resend_invite(member_id: str, user: dict = Depends(get_current_user)):
+    if not is_privileged(user):
+        raise HTTPException(status_code=403, detail="Yetkiniz yok")
+    target = await db.users.find_one({"user_id": member_id, "org_id": user["org_id"]})
+    if not target or target.get("status") != "invited":
+        raise HTTPException(status_code=400, detail="Bekleyen davet bulunamadı")
+    token = target.get("invite_token") or secrets.token_urlsafe(24)
+    await db.users.update_one({"user_id": member_id},
+                              {"$set": {"invite_token": token, "invite_expires": iso_offset_days(7)}})
+    link = f"{os.environ.get('APP_URL', '')}/davet?token={token}"
+    role_labels = {"owner": "Sahip", "admin": "Yönetici", "member": "Üye"}
+    try:
+        await email_invite(target["email"], target["name"], user.get("name", ""), link, role_labels.get(target.get("role"), "Üye"))
+    except Exception as e:
+        logger.warning(f"resend invite failed: {e}")
+    return {"ok": True}
+
+
 @router.get("/invite/{token}")
 async def get_invite(token: str):
     u = await db.users.find_one({"invite_token": token}, {"_id": 0})
@@ -795,10 +848,13 @@ async def get_activities(user: dict = Depends(get_current_user), workspace_id: O
 
 # ---------------- BUDGET ----------------
 async def _budget_alert_if_crossed(proj, before_items, after_items, actor):
+    threshold = (proj.get("budget_threshold") or 100) / 100.0
     b = _budget_summary(before_items)
     a = _budget_summary(after_items)
-    crossed = (a["planned_expense"] > 0 and a["actual_expense"] > a["planned_expense"]
-               and not (b["actual_expense"] > b["planned_expense"]))
+    limit_a = a["planned_expense"] * threshold
+    limit_b = b["planned_expense"] * threshold
+    crossed = (a["planned_expense"] > 0 and a["actual_expense"] > limit_a
+               and not (b["planned_expense"] > 0 and b["actual_expense"] > limit_b))
     if not crossed:
         return
     managers = await db.users.find(
@@ -1113,6 +1169,41 @@ async def cron_weekly_summary(request: Request, background: BackgroundTasks):
     if not secret or not hmac.compare_digest(token, secret):
         raise HTTPException(status_code=401, detail="Yetkisiz")
     background.add_task(_run_weekly_summary)
+    return {"ok": True}
+
+
+async def _run_daily_reminder():
+    users = await db.users.find({}, {"_id": 0}).to_list(500)
+    now = datetime.now(timezone.utc)
+    end = now + timedelta(days=2)
+    for u in users:
+        if not u.get("email") or u.get("status") == "invited":
+            continue
+        tasks = await db.tasks.find({"assignees": u["user_id"], "parent_id": None}, {"_id": 0}).to_list(1000)
+        due_soon = []
+        for t in tasks:
+            if not t.get("due_date"):
+                continue
+            try:
+                dd = datetime.fromisoformat(t["due_date"].replace("Z", "+00:00"))
+                if dd.tzinfo is None:
+                    dd = dd.replace(tzinfo=timezone.utc)
+                if now.date() <= dd.date() <= end.date():
+                    due_soon.append(t["title"])
+            except Exception:
+                pass
+        if due_soon:
+            await email_daily_reminder(u["email"], u.get("name", ""), due_soon)
+
+
+@router.post("/cron/daily-reminder")
+async def cron_daily_reminder(request: Request, background: BackgroundTasks):
+    header = request.headers.get("Authorization", "")
+    token = header[7:] if header.startswith("Bearer ") else ""
+    secret = os.environ.get("WEBHOOK_CRON_SECRET", "")
+    if not secret or not hmac.compare_digest(token, secret):
+        raise HTTPException(status_code=401, detail="Yetkisiz")
+    background.add_task(_run_daily_reminder)
     return {"ok": True}
 
 

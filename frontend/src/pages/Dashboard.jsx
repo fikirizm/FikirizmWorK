@@ -51,6 +51,7 @@ export default function Dashboard() {
     queryKey: ["dashboard", currentWorkspaceId],
     queryFn: async () => (await API.get(`/dashboard?workspace_id=${currentWorkspaceId}`)).data,
     enabled: !!currentWorkspaceId,
+    refetchInterval: 20000,
   });
 
   const projName = (id) => allProjects.find((p) => p.id === id)?.name || "";

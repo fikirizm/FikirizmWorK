@@ -52,10 +52,19 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Test: iteration4 backend 24/24, frontend UI %100.
 - ⚠️ Bilinen (önceden mevcut) sınır: Preview ortamında WebSocket handshake 403 dönebiliyor; realtime yayınlar bu durumda sessizce düşer ancak UI her işlemden sonra yeniden veri çektiği için işlevsellik etkilenmez.
 
+## Implemented — İterasyon 5 (2026-08-19)
+- ✅ **Görsel önizleme**: Resim ekleri TaskDrawer'da küçük thumbnail olarak gösteriliyor (tıklayınca indirir).
+- ✅ **Bütçe eşiği ayarı**: Proje Ayarları'nda %80/%90/%100/%110 eşik; uyarı e-postası gerçekleşen gider planlananın seçilen oranını ilk kez aşınca tetikleniyor (`budget_threshold`).
+- ✅ **Günlük hatırlatma**: `crons.yml` → her sabah 08:00 (İstanbul) `POST /api/cron/daily-reminder`; son tarihi bugün/yarın olan görevler için kişiye özel e-posta.
+- ✅ **Realtime dayanıklılık**: tasks/ideas/dashboard/budget sorgularına `refetchInterval` (15-20sn) fallback — WebSocket kapalı olsa da ekip değişiklikleri otomatik yansır.
+- ✅ **Gelişmiş üye yönetimi**: rol değiştirme (`PATCH /members/{id}`), üyeyi çıkarma (`DELETE /members/{id}` + üyelik/atama temizliği), bekleyen daveti yeniden gönderme (`POST /members/{id}/resend-invite`). MembersPage'de inline rol seçici + çıkar + tekrar davet.
+- ✅ **Mobil uyum**: Topbar'da hamburger menü (Sheet) ile mobilde proje/sayfa navigasyonu.
+- ✅ **Premium görsel**: yumuşak radyal gradient arka plan, incelmiş gölge derinliği, tutarlı geçiş animasyonları.
+- ✅ Doğrulama: backend uçları curl ile teyit (üye rol/çıkar 200, günlük+haftalık cron 401/200, dosya/thumbnail, davet akışı); frontend temiz derleniyor.
+
 ## Next Tasks
 - routes.py'yi kaynak bazlı router'lara böl (bakım).
-- Realtime WS'in preview ingress 403 sorununu araştır / polling fallback.
-- Radix DialogTitle/Description a11y uyarılarını temizle.
+- Realtime WS'in preview ingress 403 sorununu araştır (polling fallback devrede).
 
 ## Implemented — İterasyon 3 (2026-08-19)
 - ✅ **Bütçe dışa aktarma**: Excel (.xlsx / openpyxl) ve PDF (reportlab) — `GET /api/projects/{id}/budget/export?fmt=xlsx|pdf`, BudgetView'da Excel/PDF butonları (blob indirme).

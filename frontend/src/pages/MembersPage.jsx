@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { UserPlus, Users } from "lucide-react";
+import { UserPlus, Users, Trash2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { formatApiError } from "@/lib/api";
 
@@ -42,6 +42,23 @@ export default function MembersPage() {
 
   const canInvite = user?.role === "owner" || user?.role === "admin";
 
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["members"] });
+    queryClient.invalidateQueries({ queryKey: ["bootstrap"] });
+  };
+  const changeRole = async (id, role) => {
+    try { await API.patch(`/members/${id}`, { role }); toast.success("Rol güncellendi"); refresh(); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+  const removeMember = async (id) => {
+    try { await API.delete(`/members/${id}`); toast.success("Üye çıkarıldı"); refresh(); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+  const resend = async (id) => {
+    try { await API.post(`/members/${id}/resend-invite`); toast.success("Davet yeniden gönderildi"); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+
   return (
     <div className="mx-auto max-w-3xl space-y-5 p-6">
       <div className="flex items-center justify-between">
@@ -64,9 +81,30 @@ export default function MembersPage() {
                 </p>
                 <p className="truncate text-xs text-muted-foreground">{m.email}</p>
               </div>
-              <span className="rounded-md px-2 py-1 text-xs font-semibold" style={{ color: role.color, background: `${role.color}1f` }}>
-                {role.label}
-              </span>
+              {canInvite && m.role !== "owner" && m.user_id !== user?.user_id ? (
+                <div className="flex items-center gap-1.5">
+                  {m.status === "invited" && (
+                    <Button variant="ghost" size="sm" className="h-8" onClick={() => resend(m.user_id)} data-testid={`resend-${m.user_id}`}>
+                      <Send className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  <Select value={m.role} onValueChange={(v) => changeRole(m.user_id, v)}>
+                    <SelectTrigger className="h-8 w-28" data-testid={`role-select-${m.user_id}`}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="member">Üye</SelectItem>
+                      <SelectItem value="admin">Yönetici</SelectItem>
+                      {user?.role === "owner" && <SelectItem value="owner">Sahip</SelectItem>}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeMember(m.user_id)} data-testid={`remove-${m.user_id}`}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <span className="rounded-md px-2 py-1 text-xs font-semibold" style={{ color: role.color, background: `${role.color}1f` }}>
+                  {role.label}
+                </span>
+              )}
             </div>
           );
         })}

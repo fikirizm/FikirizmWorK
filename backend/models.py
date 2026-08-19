@@ -32,6 +32,11 @@ class ProjectBody(BaseModel):
     currency: Optional[str] = "TRY"
     members: Optional[List[str]] = []
     budget_policy: Optional[str] = "admins"
+    budget_threshold: Optional[int] = 100
+
+
+class MemberUpdate(BaseModel):
+    role: str
 
 
 class ProjectUpdate(BaseModel):
@@ -43,6 +48,7 @@ class ProjectUpdate(BaseModel):
     currency: Optional[str] = None
     members: Optional[List[str]] = None
     budget_policy: Optional[str] = None
+    budget_threshold: Optional[int] = None
 
 
 class TaskBody(BaseModel):

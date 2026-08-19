@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Search, LogOut, Settings } from "lucide-react";
+import { Search, LogOut, Settings, Menu } from "lucide-react";
+import { NavLink } from "react-router-dom";
+import { useAppData } from "@/context/AppData";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -11,6 +14,34 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const ROLE_LABELS = { owner: "Sahip", admin: "Yönetici", member: "Üye" };
+
+function MobileNav() {
+  const { projects } = useAppData();
+  const link = "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted";
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <button className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted md:hidden" data-testid="mobile-nav-btn">
+          <Menu className="h-5 w-5" />
+        </button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-72 p-0">
+        <SheetTitle className="border-b border-border px-4 py-3 font-heading">Fikirizm Cloud</SheetTitle>
+        <nav className="flex flex-col gap-1 p-3">
+          <NavLink to="/panel" className={link} data-testid="mnav-dashboard">Genel Bakış</NavLink>
+          <NavLink to="/fikirler" className={link} data-testid="mnav-ideas">Fikirler</NavLink>
+          <NavLink to="/uyeler" className={link} data-testid="mnav-members">Üyeler</NavLink>
+          <div className="mt-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Projeler</div>
+          {projects.map((p) => (
+            <NavLink key={p.id} to={`/proje/${p.id}`} className={link}>
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} /> {p.name}
+            </NavLink>
+          ))}
+        </nav>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 export function Topbar({ breadcrumb, onOpenSearch }) {
   const { user, logout } = useAuth();
@@ -24,6 +55,7 @@ export function Topbar({ breadcrumb, onOpenSearch }) {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-md">
       <div className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+        <MobileNav />
         {breadcrumb}
       </div>
 

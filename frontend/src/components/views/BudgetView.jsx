@@ -51,6 +51,7 @@ export function BudgetView({ project, tasks = [] }) {
   const { data, isLoading } = useQuery({
     queryKey: ["budget", project.id],
     queryFn: async () => (await API.get(`/projects/${project.id}/budget`)).data,
+    refetchInterval: 20000,
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["budget", project.id] });

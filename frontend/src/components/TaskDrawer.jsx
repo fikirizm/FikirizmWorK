@@ -357,7 +357,16 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
                 <div className="space-y-1.5">
                   {(task.attachments || []).map((f) => (
                     <div key={f.id} className="group flex items-center gap-2 rounded-md border border-border px-2.5 py-2 hover:bg-muted/50" data-testid={`attachment-${f.id}`}>
-                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      {f.content_type?.startsWith("image/") ? (
+                        <img
+                          src={`${process.env.REACT_APP_BACKEND_URL}/api/files/${f.id}/download?auth=${localStorage.getItem("fik_token")}`}
+                          alt={f.original_filename}
+                          className="h-9 w-9 shrink-0 cursor-pointer rounded object-cover border border-border"
+                          onClick={() => downloadFile(f)}
+                        />
+                      ) : (
+                        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      )}
                       <button onClick={() => downloadFile(f)} className="min-w-0 flex-1 truncate text-left text-sm hover:text-primary" data-testid={`attachment-download-${f.id}`}>
                         {f.original_filename}
                       </button>

@@ -45,6 +45,7 @@ export default function IdeasPage() {
     queryKey: ["ideas", currentWorkspaceId, sort],
     queryFn: async () => (await API.get(`/ideas?workspace_id=${currentWorkspaceId}&sort=${sort}`)).data,
     enabled: !!currentWorkspaceId,
+    refetchInterval: 20000,
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["ideas"] });
