@@ -27,6 +27,13 @@ export default function ActivityPage() {
     refetchInterval: 20000,
   });
 
+  useEffect(() => {
+    if (acts.length) {
+      localStorage.setItem("fik_activity_seen", acts[0].created_at);
+      window.dispatchEvent(new Event("activity-seen"));
+    }
+  }, [acts]);
+
   const types = Array.from(new Set(acts.map((a) => a.action)));
   const filtered = filter === "all" ? acts : acts.filter((a) => a.action === filter);
 

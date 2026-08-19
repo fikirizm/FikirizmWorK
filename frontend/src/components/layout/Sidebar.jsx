@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAppData } from "@/context/AppData";
 import { useAuth } from "@/context/AuthContext";
 import API from "@/lib/api";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -37,7 +37,7 @@ function ProjectIcon({ icon, color }) {
 }
 
 export function Sidebar({ collapsed, setCollapsed }) {
-  const { projects, currentWorkspace, org, members } = useAppData();
+  const { projects, currentWorkspace, currentWorkspaceId, org, members } = useAppData();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -48,6 +48,20 @@ export function Sidebar({ collapsed, setCollapsed }) {
   const [currency, setCurrency] = useState("TRY");
   const [selMembers, setSelMembers] = useState([]);
   const [saving, setSaving] = useState(false);
+
+  const [seen, setSeen] = useState(() => localStorage.getItem("fik_activity_seen") || "");
+  useEffect(() => {
+    const h = () => setSeen(localStorage.getItem("fik_activity_seen") || "");
+    window.addEventListener("activity-seen", h);
+    return () => window.removeEventListener("activity-seen", h);
+  }, []);
+  const { data: acts = [] } = useQuery({
+    queryKey: ["activities", currentWorkspaceId],
+    queryFn: async () => (await API.get(`/activities?workspace_id=${currentWorkspaceId}`)).data,
+    enabled: !!currentWorkspaceId,
+    refetchInterval: 20000,
+  });
+  const activityBadge = acts.filter((a) => a.user_id !== user?.user_id && (!seen || a.created_at > seen)).length;
 
   const openDialog = () => {
     setName(""); setDesc(""); setTemplate("general"); setCurrency("TRY");
@@ -130,14 +144,20 @@ export function Sidebar({ collapsed, setCollapsed }) {
         </NavLink>
         <NavLink to="/aktivite" className={linkCls} data-testid="nav-activity">
           <Activity className="h-[18px] w-[18px] shrink-0" />
-          {!collapsed && "Aktivite"}
+          {!collapsed && <span className="flex-1">Aktivite</span>}
+          {activityBadge > 0 && (
+            <span
+              className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white"
+              data-testid="activity-badge"
+            >
+              {activityBadge > 99 ? "99+" : activityBadge}
+            </span>
+          )}
         </NavLink>
-        {(user?.role === "owner" || user?.role === "admin") && (
-          <NavLink to="/ayarlar/mail" className={linkCls} data-testid="nav-mail-settings">
-            <Mail className="h-[18px] w-[18px] shrink-0" />
-            {!collapsed && "Mail Ayarları"}
-          </NavLink>
-        )}
+        <NavLink to="/ayarlar" className={linkCls} data-testid="nav-settings">
+          <Settings className="h-[18px] w-[18px] shrink-0" />
+          {!collapsed && "Ayarlar"}
+        </NavLink>
 
         <div className="mt-4 mb-1 flex items-center justify-between px-3">
           {!collapsed && (

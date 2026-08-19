@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Reorder } from "framer-motion";
 import API from "@/lib/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAppData } from "@/context/AppData";
@@ -22,7 +23,7 @@ import { PRIORITIES, toDateInput, formatDateTime, doneStatusId, formatMoney } fr
 import {
   Trash2, Plus, X, Calendar as CalIcon, Users, Flag, Tag, ListChecks,
   MessageSquare, CheckSquare, Send, GitBranch, Eye, Lock, Wallet, Paperclip, Download, FileText,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, GripVertical, ArrowUpToLine,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,10 +45,13 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
   const [newTag, setNewTag] = useState("");
   const [newSub, setNewSub] = useState("");
   const [newCheck, setNewCheck] = useState("");
+  const [subOrder, setSubOrder] = useState([]);
 
   useEffect(() => {
     if (task) { setTitle(task.title); setDesc(task.description || ""); }
   }, [task]);
+
+  useEffect(() => { setSubOrder(task?.subtasks || []); }, [task?.subtasks]);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["task", taskId] });
@@ -111,6 +115,18 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
     const done = doneStatusId(statuses);
     const next = sub.status === done ? statuses[0]?.id : done;
     await API.patch(`/tasks/${sub.id}`, { status: next });
+    invalidate();
+  };
+
+  const persistSubOrder = async (ordered) => {
+    setSubOrder(ordered);
+    await Promise.all(ordered.map((s, i) => API.patch(`/tasks/${s.id}`, { order: i })));
+    invalidate();
+  };
+
+  const promoteSub = async (id) => {
+    await API.post(`/tasks/${id}/promote`);
+    toast.success("Alt görev ana göreve dönüştürüldü");
     invalidate();
   };
 
@@ -341,13 +357,27 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
               <div className="space-y-2">
                 <Label icon={GitBranch}>Alt Görevler</Label>
                 <div className="space-y-1">
-                  {(task.subtasks || []).map((s) => (
-                    <div key={s.id} className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-muted" data-testid={`subtask-${s.id}`}>
-                      <Checkbox checked={s.status === doneStatId} onCheckedChange={() => toggleSubtask(s)} />
-                      <span className={`flex-1 text-sm ${s.status === doneStatId ? "text-muted-foreground line-through" : ""}`}>{s.title}</span>
-                      {s.assignees?.length > 0 && <AvatarStack users={s.assignees.map((id) => memberMap[id]).filter(Boolean)} size={20} />}
-                    </div>
-                  ))}
+                  {subOrder.length > 0 && (
+                    <Reorder.Group axis="y" values={subOrder} onReorder={persistSubOrder} className="space-y-1">
+                      {subOrder.map((s) => (
+                        <Reorder.Item key={s.id} value={s}
+                          className="group flex items-center gap-2 rounded-md bg-card px-1 py-1 hover:bg-muted" data-testid={`subtask-${s.id}`}>
+                          <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground/40 active:cursor-grabbing" data-testid={`subtask-drag-${s.id}`} />
+                          <Checkbox checked={s.status === doneStatId} onCheckedChange={() => toggleSubtask(s)} />
+                          <span className={`flex-1 text-sm ${s.status === doneStatId ? "text-muted-foreground line-through" : ""}`}>{s.title}</span>
+                          {s.assignees?.length > 0 && <AvatarStack users={s.assignees.map((id) => memberMap[id]).filter(Boolean)} size={20} />}
+                          <button
+                            onClick={() => promoteSub(s.id)}
+                            title="Ana göreve dönüştür"
+                            className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                            data-testid={`subtask-promote-${s.id}`}
+                          >
+                            <ArrowUpToLine className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+                          </button>
+                        </Reorder.Item>
+                      ))}
+                    </Reorder.Group>
+                  )}
                   <div className="flex items-center gap-2 px-1">
                     <Plus className="h-4 w-4 text-muted-foreground" />
                     <input value={newSub} onChange={(e) => setNewSub(e.target.value)}

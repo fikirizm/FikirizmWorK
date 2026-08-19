@@ -23,6 +23,7 @@ from models import (
     RegisterBody, LoginBody, SessionBody, WorkspaceBody, ProjectBody, ProjectUpdate,
     TaskBody, TaskUpdate, BulkUpdate, CommentBody, IdeaBody, IdeaUpdate, InviteBody,
     BudgetBody, BudgetUpdate, AcceptInviteBody, MemberUpdate, EmailSettingsBody, TestEmailBody,
+    NotifPrefsBody, ProfileUpdate, OrgUpdate, WorkspaceUpdate,
 )
 from templates_data import TEMPLATES, get_template
 from mailer import (email_task_assigned, email_project_added, email_invite,
@@ -79,13 +80,27 @@ def can_see_task(user, task):
     return True
 
 
-async def _email_new_assignees(new_ids, actor, task_title, project_name=""):
+def notif_prefs(u):
+    p = (u or {}).get("notif_prefs") or {}
+    return {
+        "assign": p.get("assign", True),
+        "budget": p.get("budget", True),
+        "reminder": p.get("reminder", True),
+        "muted_projects": p.get("muted_projects", []),
+    }
+
+
+async def _email_new_assignees(new_ids, actor, task_title, project_name="", project_id=None):
     for aid in new_ids:
         if aid == actor["user_id"]:
             continue
         u = await db.users.find_one({"user_id": aid}, {"_id": 0})
-        if u and u.get("email"):
-            await email_task_assigned(u["email"], u.get("name", ""), actor.get("name", ""), task_title, project_name)
+        if not u or not u.get("email"):
+            continue
+        pr = notif_prefs(u)
+        if not pr["assign"] or (project_id and project_id in pr["muted_projects"]):
+            continue
+        await email_task_assigned(u["email"], u.get("name", ""), actor.get("name", ""), task_title, project_name)
 
 
 async def _email_new_members(new_ids, actor, project_name):
@@ -391,7 +406,7 @@ async def create_task(body: TaskBody, user: dict = Depends(get_current_user)):
         if aid != user["user_id"]:
             await create_notification(user["org_id"], aid, "assign", f"{user['name']} sizi bir göreve atadı: {task['title']}", f"/proje/{body.project_id}")
     proj_name = proj["name"] if proj else ""
-    await _email_new_assignees(task["assignees"], user, task["title"], proj_name)
+    await _email_new_assignees(task["assignees"], user, task["title"], proj_name, body.project_id)
     await log_activity(user["org_id"], body.workspace_id, user, "görev oluşturdu", body.title)
     await manager.broadcast(body.workspace_id, {"type": "task", "action": "create", "data": out})
     return out
@@ -405,6 +420,7 @@ async def get_task(task_id: str, user: dict = Depends(get_current_user)):
     if not can_see_task(user, task):
         raise HTTPException(status_code=403, detail="Bu göreve erişiminiz yok")
     subtasks = await db.tasks.find({"parent_id": task_id}, {"_id": 0}).to_list(500)
+    subtasks.sort(key=lambda s: s.get("order", 0))
     comments = await db.comments.find({"task_id": task_id}, {"_id": 0}).to_list(500)
     comments.sort(key=lambda c: c.get("created_at", ""))
     bitems = await db.budget_items.find({"task_id": task_id}, {"_id": 0}).to_list(300)
@@ -437,7 +453,7 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_c
                 await create_notification(user["org_id"], aid, "assign", f"{user['name']} sizi bir göreve atadı: {task['title']}", f"/proje/{task['project_id']}")
         new_assignees = [a for a in updates["assignees"] if a not in existing.get("assignees", [])]
         if new_assignees:
-            await _email_new_assignees(new_assignees, user, task["title"])
+            await _email_new_assignees(new_assignees, user, task["title"], "", task.get("project_id"))
     if "status" in updates and updates["status"] != existing.get("status"):
         await log_activity(user["org_id"], task["workspace_id"], user, "görev durumunu değiştirdi", task["title"])
     await manager.broadcast(task["workspace_id"], {"type": "task", "action": "update", "data": task})
@@ -452,6 +468,19 @@ async def delete_task(task_id: str, user: dict = Depends(get_current_user)):
     if task:
         await manager.broadcast(task["workspace_id"], {"type": "task", "action": "delete", "data": {"id": task_id}})
     return {"ok": True}
+
+
+@router.post("/tasks/{task_id}/promote")
+async def promote_subtask(task_id: str, user: dict = Depends(get_current_user)):
+    task = await db.tasks.find_one({"id": task_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not task:
+        raise HTTPException(status_code=404, detail="Görev bulunamadı")
+    count = await db.tasks.count_documents({"project_id": task["project_id"], "status": task.get("status"), "parent_id": None})
+    await db.tasks.update_one({"id": task_id}, {"$set": {"parent_id": None, "order": count}})
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    await log_activity(user["org_id"], task["workspace_id"], user, "alt görevi ana göreve dönüştürdü", task["title"])
+    await manager.broadcast(task["workspace_id"], {"type": "task", "action": "update", "data": task})
+    return task
 
 
 @router.post("/tasks/bulk")
@@ -861,9 +890,13 @@ async def _budget_alert_if_crossed(proj, before_items, after_items, actor):
         {"org_id": proj["org_id"], "role": {"$in": ["owner", "admin"]}}, {"_id": 0}).to_list(50)
     cur = {"TRY": "₺", "USD": "$", "EUR": "€"}.get(proj.get("currency", "TRY"), "")
     for m in managers:
-        if m.get("email"):
-            await email_budget_alert(m["email"], m.get("name", ""), proj["name"],
-                                     a["actual_expense"], a["planned_expense"], cur)
+        if not m.get("email"):
+            continue
+        pr = notif_prefs(m)
+        if not pr["budget"] or proj["id"] in pr["muted_projects"]:
+            continue
+        await email_budget_alert(m["email"], m.get("name", ""), proj["name"],
+                                 a["actual_expense"], a["planned_expense"], cur)
 
 
 def _budget_summary(items):
@@ -1133,7 +1166,7 @@ async def get_email_settings(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Yetkiniz yok")
     cfg = await db.email_settings.find_one({"org_id": user["org_id"]}, {"_id": 0}) or {}
     return {
-        "provider": cfg.get("provider", "emergent"),
+        "provider": cfg.get("provider", "smtp"),
         "smtp_host": cfg.get("smtp_host", ""), "smtp_port": cfg.get("smtp_port", 587),
         "smtp_user": cfg.get("smtp_user", ""), "from_email": cfg.get("from_email", ""),
         "from_name": cfg.get("from_name", "Fikirizm Cloud"), "use_tls": cfg.get("use_tls", True),
@@ -1167,6 +1200,54 @@ async def test_email_settings(body: TestEmailBody, user: dict = Depends(get_curr
         raise HTTPException(status_code=502, detail=f"Gönderilemedi: {e}")
 
 
+# ---------------- USER SETTINGS ----------------
+@router.get("/settings/notifications")
+async def get_notif_prefs(user: dict = Depends(get_current_user)):
+    u = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    return notif_prefs(u)
+
+
+@router.put("/settings/notifications")
+async def save_notif_prefs(body: NotifPrefsBody, user: dict = Depends(get_current_user)):
+    updates = {f"notif_prefs.{k}": v for k, v in body.model_dump().items() if v is not None}
+    if updates:
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": updates})
+    u = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    return notif_prefs(u)
+
+
+@router.patch("/profile")
+async def update_profile(body: ProfileUpdate, user: dict = Depends(get_current_user)):
+    updates = {k: v for k, v in body.model_dump().items() if v is not None and str(v).strip()}
+    if updates:
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": updates})
+    u = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    return sanitize_user(u)
+
+
+@router.patch("/organization")
+async def update_organization(body: OrgUpdate, user: dict = Depends(get_current_user)):
+    if not is_privileged(user):
+        raise HTTPException(status_code=403, detail="Yetkiniz yok")
+    updates = {k: v for k, v in body.model_dump().items() if v is not None and str(v).strip()}
+    if updates:
+        await db.organizations.update_one({"id": user["org_id"]}, {"$set": updates})
+    return await db.organizations.find_one({"id": user["org_id"]}, {"_id": 0})
+
+
+@router.patch("/workspaces/{workspace_id}")
+async def update_workspace(workspace_id: str, body: WorkspaceUpdate, user: dict = Depends(get_current_user)):
+    if not is_privileged(user):
+        raise HTTPException(status_code=403, detail="Yetkiniz yok")
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if updates:
+        await db.workspaces.update_one({"id": workspace_id, "org_id": user["org_id"]}, {"$set": updates})
+    ws = await db.workspaces.find_one({"id": workspace_id, "org_id": user["org_id"]}, {"_id": 0})
+    if ws:
+        await manager.broadcast(workspace_id, {"type": "workspace", "action": "update", "data": ws})
+    return ws
+
+
 # ---------------- CRON ----------------
 async def _run_weekly_summary():
     users = await db.users.find({}, {"_id": 0}).to_list(500)
@@ -1184,7 +1265,11 @@ async def _run_weekly_summary():
     for u in users:
         if not u.get("email") or u.get("status") == "invited":
             continue
+        pr = notif_prefs(u)
+        if not pr["reminder"]:
+            continue
         tasks = await db.tasks.find({"assignees": u["user_id"], "parent_id": None}, {"_id": 0}).to_list(1000)
+        tasks = [t for t in tasks if t.get("project_id") not in pr["muted_projects"]]
         open_t = [t for t in tasks if not is_done(t)]
         overdue = []
         for t in open_t:
@@ -1220,7 +1305,11 @@ async def _run_daily_reminder():
     for u in users:
         if not u.get("email") or u.get("status") == "invited":
             continue
+        pr = notif_prefs(u)
+        if not pr["reminder"]:
+            continue
         tasks = await db.tasks.find({"assignees": u["user_id"], "parent_id": None}, {"_id": 0}).to_list(1000)
+        tasks = [t for t in tasks if t.get("project_id") not in pr["muted_projects"]]
         due_soon = []
         for t in tasks:
             if not t.get("due_date"):

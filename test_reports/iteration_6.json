@@ -1,0 +1,44 @@
+{
+  "summary": "E2E frontend verification of 4 new features on Fikirizm Cloud (Settings unification, notification prefs, draggable/promotable subtasks, activity badge). All 4 features work end-to-end. Backend changes were already curl-verified by main agent.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "TaskDrawer & some Dialogs", "issues": ["Radix a11y console warning: 'DialogContent requires a DialogTitle' — pre-existing, non-blocking"]}
+    ],
+    "other": [
+      {"issue": "WebSocket /api/ws/... handshake returns 403 in preview (polling fallback works). Confirmed out-of-scope per request."}
+    ]
+  },
+  "verified_features": [
+    "Login as owner ingobiosport@gmail.com works, dashboard loads.",
+    "Sidebar shows nav-settings ('Ayarlar') and NO nav-mail-settings link. No 'Mail Ayarları' text in sidebar.",
+    "GET /ayarlar/mail redirects to /ayarlar (verified URL after navigation).",
+    "/ayarlar shows all 4 tabs: tab-profile, tab-notifications, tab-mail, tab-workspace.",
+    "Profile tab: edited profile-name-input ('Fikirizm Yöneticisi' -> '... T'), Kaydet persists after reload; reverted to original.",
+    "Mail tab: smtp-host, smtp-port, smtp-user, smtp-pass, from-email, from-name, smtp-tls-switch, mail-save-btn all visible. 'Emergent' text NOT present anywhere on tab. No provider dropdown exists.",
+    "Notifications tab: notif-assign-switch, notif-budget-switch, notif-reminder-switch, notif-save-btn visible. Toggling assign switch (checked -> unchecked) and muting one project persisted after reload (GET /settings/notifications reflects saved state). Reverted after test.",
+    "Workspace tab: org-name-input + ws-name-input + workspace-save-btn. Saved 'Fikirizm X' / 'Fikirizm Ekibi X', persisted after reload. Reverted to original.",
+    "TaskDrawer subtasks: added 2 subtasks via subtask-input. Each row has subtask-drag-<id> handle (GripVertical) and subtask-promote-<id> button. Clicking promote on last added subtask removed it from subtasks list and it appeared as a top-level card ('TEST subtask 1 ...') in the Ürün Geliştirme project (verified via Pano view screenshot).",
+    "Activity badge: sidebar showed activity-badge with count '3' on initial load. After navigating to /aktivite, localStorage 'fik_activity_seen' was set to an ISO timestamp; navigating away and back showed badge cleared (element removed from DOM)."
+  ],
+  "test_report_links": [],
+  "action_items": [
+    "Cleanup task: a top-level task named 'TEST subtask 1 1787149719' was created (promoted from subtask) in project prj_e7fa4c4d8e8c4a64 (Ürün Geliştirme) during testing — please delete if not wanted.",
+    "Optional (pre-existing): silence Radix DialogTitle a11y warnings via VisuallyHidden."
+  ],
+  "critical_code_review_comments": [
+    "SettingsPage.jsx is well-modularized with separate ProfileTab/NotificationsTab/MailTab/WorkspaceTab subcomponents — good.",
+    "TaskDrawer.jsx still ~450+ lines; consider splitting subtasks/comments/attachments into subcomponents (repeated feedback).",
+    "notif-*-switch testids use short keys (assign/budget/reminder) not (assignment) — review_request mentioned 'notif-assignment-switch' which is a typo; actual code uses 'notif-assign-switch' and works correctly.",
+    "Sidebar activity badge correctly uses localStorage 'fik_activity_seen' + /activities query; verified reset behavior works end-to-end."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (already verified by main agent)", "frontend": "100%"},
+  "test_credentials": "Owner: ingobiosport@gmail.com / Fikirizm2025! (verified working)",
+  "seed_data_creation": "Created 1 leftover top-level task 'TEST subtask 1 <timestamp>' in project prj_e7fa4c4d8e8c4a64 (Ürün Geliştirme) as a byproduct of promote-subtask test. 1 other TEST subtask was left as a subtask under 'Zengin metin editörünü entegre et'.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 4 new features (Unified Settings /ayarlar with 4 tabs, notification prefs incl. per-project mute, draggable+promotable subtasks, activity badge reset) verified E2E and functional. Leftover TEST data noted above; consider deletion. WS 403 in preview is pre-existing environmental and unrelated."
+}

@@ -40,7 +40,7 @@ class MemberUpdate(BaseModel):
 
 
 class EmailSettingsBody(BaseModel):
-    provider: str = "emergent"  # emergent | smtp
+    provider: str = "smtp"  # smtp (Custom SMTP / Amazon SES)
     smtp_host: Optional[str] = ""
     smtp_port: Optional[int] = 587
     smtp_user: Optional[str] = ""
@@ -52,6 +52,26 @@ class EmailSettingsBody(BaseModel):
 
 class TestEmailBody(BaseModel):
     to: str
+
+
+class NotifPrefsBody(BaseModel):
+    assign: Optional[bool] = None
+    budget: Optional[bool] = None
+    reminder: Optional[bool] = None
+    muted_projects: Optional[List[str]] = None
+
+
+class ProfileUpdate(BaseModel):
+    name: Optional[str] = None
+
+
+class OrgUpdate(BaseModel):
+    name: Optional[str] = None
+
+
+class WorkspaceUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
 
 
 class ProjectUpdate(BaseModel):
@@ -96,6 +116,7 @@ class TaskUpdate(BaseModel):
     order: Optional[float] = None
     visibility: Optional[str] = None
     visible_to: Optional[List[str]] = None
+    parent_id: Optional[str] = None
 
 
 class BulkUpdate(BaseModel):

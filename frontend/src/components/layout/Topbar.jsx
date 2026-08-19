@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Search, LogOut, Settings, Menu } from "lucide-react";
+import { Search, LogOut, Settings, Menu, Users } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAppData } from "@/context/AppData";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -31,6 +31,8 @@ function MobileNav() {
           <NavLink to="/panel" className={link} data-testid="mnav-dashboard">Genel Bakış</NavLink>
           <NavLink to="/fikirler" className={link} data-testid="mnav-ideas">Fikirler</NavLink>
           <NavLink to="/uyeler" className={link} data-testid="mnav-members">Üyeler</NavLink>
+          <NavLink to="/aktivite" className={link} data-testid="mnav-activity">Aktivite</NavLink>
+          <NavLink to="/ayarlar" className={link} data-testid="mnav-settings">Ayarlar</NavLink>
           <div className="mt-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Projeler</div>
           {projects.map((p) => (
             <NavLink key={p.id} to={`/proje/${p.id}`} className={link}>
@@ -94,8 +96,11 @@ export function Topbar({ breadcrumb, onOpenSearch }) {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => navigate("/ayarlar")} data-testid="menu-settings">
+            <Settings className="mr-2 h-4 w-4" /> Ayarlar
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigate("/uyeler")} data-testid="menu-members">
-            <Settings className="mr-2 h-4 w-4" /> Ekip Yönetimi
+            <Users className="mr-2 h-4 w-4" /> Ekip Yönetimi
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive" data-testid="logout-btn">

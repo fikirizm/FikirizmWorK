@@ -70,6 +70,15 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## Implemented — İterasyon 7 (2026-06)
+- ✅ **Birleşik Ayarlar sayfası** (`/ayarlar`): sekmeli yapı — **Profil** (ad düzenleme + rol/e-posta), **Bildirimler**, **Mail** (Owner/Admin), **Çalışma Alanı** (Owner/Admin: org & workspace adı). Eski `/ayarlar/mail` artık `/ayarlar`'a yönlendiriyor. Sidebar'daki "Mail Ayarları" bağlantısı "Ayarlar" ile değiştirildi ve tüm kullanıcılara açık.
+- ✅ **Emergent Mail seçeneği kaldırıldı**: Mail sekmesinde artık yalnızca Özel SMTP / Amazon SES var; sağlayıcı seçici kaldırıldı, varsayılan provider `smtp`.
+- ✅ **Bildirim Tercihleri** (`GET/PUT /api/settings/notifications`): kullanıcı bazlı atama/bütçe/hatırlatma e-postası aç-kapa + **proje bazlı sessize alma**. `notif_prefs()` yardımcısı tüm e-posta gönderim noktalarında (atama, bütçe uyarısı, günlük/haftalık cron) tercih ve sessiz proje filtresi uygular.
+- ✅ **Sürüklenebilir alt görevler** (TaskDrawer, framer-motion Reorder): tutamaçla yeniden sıralama (`PATCH /tasks/{id}` order) + **alt görevi ana göreve dönüştürme** (`POST /api/tasks/{id}/promote`).
+- ✅ **Aktivite bildirim rozeti**: sidebar'da başkalarının okunmamış aktiviteleri için sayaç; `/aktivite` ziyaretinde localStorage `fik_activity_seen` ile sıfırlanır.
+- ✅ Yeni backend uçları: `PATCH /api/profile`, `PATCH /api/organization`, `PATCH /api/workspaces/{id}`, `POST /api/tasks/{id}/promote`, `GET/PUT /api/settings/notifications`.
+- ✅ Test: iteration6 backend curl doğrulandı; frontend E2E %100 (4 özellik).
+
 ## Implemented — İterasyon 3 (2026-08-19)
 - ✅ **Bütçe dışa aktarma**: Excel (.xlsx / openpyxl) ve PDF (reportlab) — `GET /api/projects/{id}/budget/export?fmt=xlsx|pdf`, BudgetView'da Excel/PDF butonları (blob indirme).
 - ✅ **Görev-bütçe özeti**: `GET /api/tasks/{id}` yanıtına `budget_summary` (count/planned/actual/currency); TaskDrawer'da "Bağlı Bütçe" bölümü.
