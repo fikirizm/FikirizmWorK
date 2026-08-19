@@ -17,7 +17,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell,
 } from "recharts";
 import {
-  Plus, TrendingUp, TrendingDown, Wallet, Trash2, Pencil, Lock, Link2,
+  Plus, TrendingUp, TrendingDown, Wallet, Trash2, Pencil, Lock, Link2, FileSpreadsheet, FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -61,6 +61,20 @@ export function BudgetView({ project, tasks = [] }) {
     toast.success("Kalem silindi");
   };
 
+  const exportBudget = async (fmt) => {
+    try {
+      const res = await API.get(`/projects/${project.id}/budget/export?fmt=${fmt}`, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `butce_${project.name}.${fmt === "pdf" ? "pdf" : "xlsx"}`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Dışa aktarma başarısız");
+    }
+  };
+
   if (isLoading || !data) {
     return <div className="grid gap-4 p-6 md:grid-cols-4">{[...Array(4)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-muted" />)}</div>;
   }
@@ -81,11 +95,15 @@ export function BudgetView({ project, tasks = [] }) {
           <h2 className="font-heading text-lg font-semibold">Bütçe Planı</h2>
           <p className="text-sm text-muted-foreground">Para birimi: {currency} · {items.length} kalem</p>
         </div>
-        {can_edit ? (
-          <Button onClick={() => { setEditItem(null); setDialogOpen(true); }} data-testid="add-budget-btn"><Plus className="mr-1.5 h-4 w-4" /> Kalem ekle</Button>
-        ) : (
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" /> Yalnızca görüntüleme</span>
-        )}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportBudget("xlsx")} data-testid="export-xlsx-btn"><FileSpreadsheet className="mr-1.5 h-4 w-4" /> Excel</Button>
+          <Button variant="outline" size="sm" onClick={() => exportBudget("pdf")} data-testid="export-pdf-btn"><FileText className="mr-1.5 h-4 w-4" /> PDF</Button>
+          {can_edit ? (
+            <Button onClick={() => { setEditItem(null); setDialogOpen(true); }} data-testid="add-budget-btn"><Plus className="mr-1.5 h-4 w-4" /> Kalem ekle</Button>
+          ) : (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" /> Yalnızca görüntüleme</span>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

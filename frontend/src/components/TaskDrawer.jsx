@@ -18,10 +18,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { UserAvatar, AvatarStack } from "@/components/UserAvatar";
 import { PriorityBadge } from "@/components/Badges";
-import { PRIORITIES, toDateInput, formatDateTime, doneStatusId } from "@/lib/constants";
+import { PRIORITIES, toDateInput, formatDateTime, doneStatusId, formatMoney } from "@/lib/constants";
 import {
   Trash2, Plus, X, Calendar as CalIcon, Users, Flag, Tag, ListChecks,
-  MessageSquare, CheckSquare, Send, GitBranch,
+  MessageSquare, CheckSquare, Send, GitBranch, Eye, Lock, Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -71,6 +71,11 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
   const toggleAssignee = (id) => {
     const cur = task.assignees || [];
     patch({ assignees: cur.includes(id) ? cur.filter((a) => a !== id) : [...cur, id] });
+  };
+
+  const toggleVisibleTo = (id) => {
+    const cur = task.visible_to || [];
+    patch({ visible_to: cur.includes(id) ? cur.filter((a) => a !== id) : [...cur, id] });
   };
 
   const addTag = () => {
@@ -201,6 +206,51 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
                     data-testid="task-due-input" />
                 </Field>
               </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <Field icon={Eye} label="Görünürlük">
+                  <Select value={task.visibility || "project"} onValueChange={(v) => patch({ visibility: v })}>
+                    <SelectTrigger className="h-8" data-testid="task-visibility-select"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="project">Tüm proje üyeleri</SelectItem>
+                      <SelectItem value="private">Gizli (seçili kişiler)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                {task.visibility === "private" && (
+                  <Field icon={Lock} label="Görebilecekler">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="flex h-8 items-center gap-2 rounded-md border border-input px-2 hover:bg-muted" data-testid="task-visibleto-btn">
+                          {(task.visible_to || []).length ? (
+                            <AvatarStack users={(task.visible_to || []).map((id) => memberMap[id]).filter(Boolean)} size={22} />
+                          ) : <span className="text-muted-foreground">Kişi seç</span>}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-1" align="start">
+                        {members.map((m) => (
+                          <button key={m.user_id} onClick={() => toggleVisibleTo(m.user_id)}
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted" data-testid={`visibleto-${m.user_id}`}>
+                            <Checkbox checked={(task.visible_to || []).includes(m.user_id)} />
+                            <UserAvatar user={m} size={22} />
+                            <span className="truncate text-sm">{m.name}</span>
+                          </button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                  </Field>
+                )}
+              </div>
+
+              {task.budget_summary?.count > 0 && (
+                <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5" data-testid="task-budget-summary">
+                  <span className="flex items-center gap-1.5 text-sm font-medium"><Wallet className="h-4 w-4 text-primary" /> Bağlı Bütçe ({task.budget_summary.count})</span>
+                  <span className="text-sm tabular-nums">
+                    <span className="font-semibold">{formatMoney(task.budget_summary.actual, task.budget_summary.currency)}</span>
+                    <span className="text-muted-foreground"> / plan {formatMoney(task.budget_summary.planned, task.budget_summary.currency)}</span>
+                  </span>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label icon={Tag}>Etiketler</Label>

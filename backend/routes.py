@@ -1,8 +1,12 @@
 import uuid
+import os
 import re
+import io
+import logging
 import httpx
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, Response, HTTPException, Depends, WebSocket, WebSocketDisconnect, Query
+from fastapi.responses import StreamingResponse
 from typing import Optional
 
 from deps import (
@@ -17,6 +21,9 @@ from models import (
     BudgetBody, BudgetUpdate,
 )
 from templates_data import TEMPLATES, get_template
+from mailer import email_task_assigned, email_project_added
+
+logger = logging.getLogger("fikirizm.routes")
 
 router = APIRouter(prefix="/api")
 
@@ -54,6 +61,34 @@ async def accessible_project_ids(user):
     projs = await db.projects.find(
         {"org_id": user["org_id"]}, {"_id": 0, "id": 1, "members": 1, "created_by": 1}).to_list(2000)
     return [p["id"] for p in projs if user["user_id"] in p.get("members", []) or p.get("created_by") == user["user_id"]]
+
+
+def can_see_task(user, task):
+    if is_privileged(user):
+        return True
+    if task.get("visibility") == "private":
+        return (user["user_id"] in (task.get("visible_to") or [])
+                or user["user_id"] in task.get("assignees", [])
+                or task.get("created_by") == user["user_id"])
+    return True
+
+
+async def _email_new_assignees(new_ids, actor, task_title, project_name=""):
+    for aid in new_ids:
+        if aid == actor["user_id"]:
+            continue
+        u = await db.users.find_one({"user_id": aid}, {"_id": 0})
+        if u and u.get("email"):
+            await email_task_assigned(u["email"], u.get("name", ""), actor.get("name", ""), task_title, project_name)
+
+
+async def _email_new_members(new_ids, actor, project_name):
+    for aid in new_ids:
+        if aid == actor["user_id"]:
+            continue
+        u = await db.users.find_one({"user_id": aid}, {"_id": 0})
+        if u and u.get("email"):
+            await email_project_added(u["email"], u.get("name", ""), actor.get("name", ""), project_name)
 
 
 def now_iso():
@@ -249,6 +284,7 @@ async def create_project(body: ProjectBody, user: dict = Depends(get_current_use
     }
     await db.projects.insert_one(proj)
     out = {k: v for k, v in proj.items() if k != "_id"}
+    await _email_new_members([m for m in members if m != user["user_id"]], user, body.name)
     await log_activity(user["org_id"], body.workspace_id, user, "proje oluşturdu", body.name)
     await manager.broadcast(body.workspace_id, {"type": "project", "action": "create", "data": out})
     return out
@@ -266,8 +302,13 @@ async def update_project(project_id: str, body: ProjectUpdate, user: dict = Depe
             updates.pop(k, None)
     if "members" in updates:
         updates["members"] = list(dict.fromkeys(updates["members"] + [proj.get("created_by")]))
+        added = [m for m in updates["members"] if m not in proj.get("members", [])]
+    else:
+        added = []
     if updates:
         await db.projects.update_one({"id": project_id}, {"$set": updates})
+    if added:
+        await _email_new_members(added, user, proj["name"])
     proj = await db.projects.find_one({"id": project_id}, {"_id": 0})
     await manager.broadcast(proj["workspace_id"], {"type": "project", "action": "update", "data": proj})
     return proj
@@ -312,6 +353,8 @@ async def list_tasks(user: dict = Depends(get_current_user), project_id: Optiona
     if q:
         query["title"] = {"$regex": re.escape(q), "$options": "i"}
     tasks = await db.tasks.find(query, {"_id": 0}).to_list(1000)
+    if not is_privileged(user):
+        tasks = [t for t in tasks if can_see_task(user, t)]
     tasks.sort(key=lambda t: t.get("order", 0))
     return tasks
 
@@ -328,6 +371,7 @@ async def create_task(body: TaskBody, user: dict = Depends(get_current_user)):
         "priority": body.priority or "medium", "assignees": body.assignees or [],
         "due_date": body.due_date, "start_date": body.start_date, "tags": body.tags or [],
         "checklist": body.checklist or [], "order": count,
+        "visibility": body.visibility or "project", "visible_to": body.visible_to or [],
         "created_at": now_iso(), "created_by": user["user_id"],
     }
     await db.tasks.insert_one(task)
@@ -335,6 +379,8 @@ async def create_task(body: TaskBody, user: dict = Depends(get_current_user)):
     for aid in task["assignees"]:
         if aid != user["user_id"]:
             await create_notification(user["org_id"], aid, "assign", f"{user['name']} sizi bir göreve atadı: {task['title']}", f"/proje/{body.project_id}")
+    proj_name = proj["name"] if proj else ""
+    await _email_new_assignees(task["assignees"], user, task["title"], proj_name)
     await log_activity(user["org_id"], body.workspace_id, user, "görev oluşturdu", body.title)
     await manager.broadcast(body.workspace_id, {"type": "task", "action": "create", "data": out})
     return out
@@ -345,9 +391,19 @@ async def get_task(task_id: str, user: dict = Depends(get_current_user)):
     task = await db.tasks.find_one({"id": task_id, "org_id": user["org_id"]}, {"_id": 0})
     if not task:
         raise HTTPException(status_code=404, detail="Görev bulunamadı")
+    if not can_see_task(user, task):
+        raise HTTPException(status_code=403, detail="Bu göreve erişiminiz yok")
     subtasks = await db.tasks.find({"parent_id": task_id}, {"_id": 0}).to_list(500)
     comments = await db.comments.find({"task_id": task_id}, {"_id": 0}).to_list(500)
     comments.sort(key=lambda c: c.get("created_at", ""))
+    bitems = await db.budget_items.find({"task_id": task_id}, {"_id": 0}).to_list(300)
+    proj = await db.projects.find_one({"id": task["project_id"]}, {"_id": 0})
+    bp = sum(float(b.get("planned_amount") or 0) for b in bitems)
+    ba = sum(float(b.get("actual_amount") or 0) for b in bitems)
+    task["budget_summary"] = {
+        "count": len(bitems), "planned": bp, "actual": ba,
+        "currency": proj.get("currency", "TRY") if proj else "TRY",
+    }
     task["subtasks"] = subtasks
     task["comments"] = comments
     return task
@@ -366,6 +422,9 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_c
         for aid in updates["assignees"]:
             if aid not in existing.get("assignees", []) and aid != user["user_id"]:
                 await create_notification(user["org_id"], aid, "assign", f"{user['name']} sizi bir göreve atadı: {task['title']}", f"/proje/{task['project_id']}")
+        new_assignees = [a for a in updates["assignees"] if a not in existing.get("assignees", [])]
+        if new_assignees:
+            await _email_new_assignees(new_assignees, user, task["title"])
     if "status" in updates and updates["status"] != existing.get("status"):
         await log_activity(user["org_id"], task["workspace_id"], user, "görev durumunu değiştirdi", task["title"])
     await manager.broadcast(task["workspace_id"], {"type": "task", "action": "update", "data": task})
@@ -766,6 +825,104 @@ async def delete_budget_item(item_id: str, user: dict = Depends(get_current_user
     await db.budget_items.delete_one({"id": item_id})
     await manager.broadcast(proj["workspace_id"], {"type": "budget", "action": "delete", "data": {"id": item_id}})
     return {"ok": True}
+
+
+@router.get("/projects/{project_id}/budget/export")
+async def export_budget(project_id: str, fmt: str = "xlsx", user: dict = Depends(get_current_user)):
+    proj = await db.projects.find_one({"id": project_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not proj or not can_access_project(user, proj):
+        raise HTTPException(status_code=403, detail="Bu projeye erişiminiz yok")
+    items = await db.budget_items.find({"project_id": project_id}, {"_id": 0}).to_list(1000)
+    members = await db.users.find({"org_id": user["org_id"]}, {"_id": 0}).to_list(200)
+    tasks = await db.tasks.find({"project_id": project_id}, {"_id": 0}).to_list(1000)
+    mmap = {m["user_id"]: m.get("name", "") for m in members}
+    tmap = {t["id"]: t.get("title", "") for t in tasks}
+    cur = proj.get("currency", "TRY")
+    s = _budget_summary(items)
+    rows = [("Tür", "Kategori", "Açıklama", "Planlanan", "Gerçekleşen", "Tarih", "Sorumlu", "Görev")]
+    for it in items:
+        rows.append((
+            "Gelir" if it["type"] == "income" else "Gider", it.get("category", ""),
+            it.get("description", ""), float(it.get("planned_amount") or 0),
+            float(it.get("actual_amount") or 0), (it.get("date") or "")[:10],
+            mmap.get(it.get("responsible"), ""), tmap.get(it.get("task_id"), ""),
+        ))
+    fname = f"butce_{proj['name']}".replace(" ", "_")
+
+    if fmt == "pdf":
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib import colors
+        from reportlab.lib.units import mm
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+
+        font = "Helvetica"
+        for path in ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                     "/usr/share/fonts/dejavu/DejaVuSans.ttf"):
+            if os.path.exists(path):
+                try:
+                    pdfmetrics.registerFont(TTFont("DejaVu", path))
+                    font = "DejaVu"
+                    break
+                except Exception:
+                    pass
+
+        def safe(v):
+            t = str(v)
+            return t if font == "DejaVu" else t.encode("latin-1", "replace").decode("latin-1")
+
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=landscape(A4), topMargin=18 * mm)
+        styles = getSampleStyleSheet()
+        styles["Title"].fontName = font
+        styles["Normal"].fontName = font
+        elems = [Paragraph(safe(f"{proj['name']} — Bütçe Raporu ({cur})"), styles["Title"]), Spacer(1, 8)]
+        summ = (f"Toplam Gelir (Gerç.): {s['actual_income']:.0f} / Plan {s['planned_income']:.0f}   |   "
+                f"Toplam Gider (Gerç.): {s['actual_expense']:.0f} / Plan {s['planned_expense']:.0f}   |   "
+                f"Bakiye (Gerç.): {s['actual_balance']:.0f}")
+        elems += [Paragraph(safe(summ), styles["Normal"]), Spacer(1, 10)]
+        tdata = [[safe(c) for c in rows[0]]] + [[safe(c) for c in r] for r in rows[1:]]
+        table = Table(tdata, repeatRows=1)
+        table.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, -1), font),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4f46e5")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#d4d4d8")),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f4f5")]),
+        ]))
+        elems.append(table)
+        doc.build(elems)
+        buf.seek(0)
+        return StreamingResponse(buf, media_type="application/pdf",
+                                 headers={"Content-Disposition": f'attachment; filename="{fname}.pdf"'})
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Bütçe"
+    ws.append([f"{proj['name']} — Bütçe ({cur})"])
+    ws.append([f"Bakiye (Gerç.): {s['actual_balance']:.0f}  |  Gelir: {s['actual_income']:.0f}  |  Gider: {s['actual_expense']:.0f}"])
+    ws.append([])
+    ws.append(list(rows[0]))
+    hdr_row = ws.max_row
+    for r in rows[1:]:
+        ws.append(list(r))
+    for cell in ws[hdr_row]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="4F46E5")
+    for col in ws.columns:
+        width = max((len(str(c.value)) for c in col if c.value), default=10)
+        ws.column_dimensions[col[0].column_letter].width = min(width + 3, 45)
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return StreamingResponse(
+        buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{fname}.xlsx"'})
 
 
 # ---------------- WEBSOCKET ----------------

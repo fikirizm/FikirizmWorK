@@ -1,0 +1,40 @@
+{
+  "summary": "Iteration 3 tests for Fikirizm Cloud passed. Backend (13/13 in test_iteration3.py): budget export xlsx+pdf return proper binary payloads with butce_ prefixed Content-Disposition; non-member gets 403/404 on Operasyon export; task-budget-summary returned by GET /api/tasks/{id} for the 'Ödül ve madalyaları sipariş et' task with correct {count, planned, actual, currency=TRY} and absent/zero for tasks without linked budget; task privacy end-to-end (owner+admin see private task; member gets 403 on GET and task excluded from list; adding member to visible_to restores access); email-triggered endpoints (POST /api/tasks with assignees, PATCH /api/tasks assignees, PATCH /api/projects members) all return 200 and persist — confirming mailer is non-blocking. Frontend (Playwright on public URL): logged in as owner, opened Bisiklet Festivali > Bütçe, verified export-xlsx-btn and export-pdf-btn trigger real file downloads (butce_Bisiklet Festivali 2026.xlsx / .pdf). Opened 'Ödül ve madalyaları sipariş et' — task-budget-summary shows 'Bağlı Bütçe (1) ₺12.000 / plan ₺30.000'. task-visibility-select switches to 'Gizli' → task-visibleto-btn appears → 4 visibleto-<userid> options rendered and selectable. Task without linked budget (Sponsor anlaşmalarını tamamla) correctly hides task-budget-summary.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "TaskDrawer visibility Popover", "issues": ["React hydration warning: '<button> cannot be a descendant of <button>' — the visibleto-* items are <button> elements nested inside the Popover trigger's <button> tree via SelectItem/PopoverContent portal in some devtool paths. Not user-visible but pollutes console. Consider changing the outer trigger to a div with role=button or use asChild carefully.", "Accessibility warning: 'DialogContent requires a DialogTitle' shown for at least one modal/drawer (likely CommandDialog for Cmd+K or the task drawer itself). Wrap the visually hidden title using @radix-ui/react-visually-hidden."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration3.py",
+    "/app/test_reports/pytest/iteration3_results.xml"
+  ],
+  "action_items": [
+    "LOW: Fix Radix accessibility warning 'DialogContent requires a DialogTitle' (add VisuallyHidden DialogTitle for drawers/command dialog).",
+    "LOW: Fix nested <button> hydration warning in TaskDrawer visible-to Popover (avoid button-in-button).",
+    "PRE-EXISTING (from iter 2, not iter 3): Pytest regressions in test_iteration2 (TestBudgetPermission) fail now because member 'mert' is no longer a member of 'Ürün Geliştirme' — env drift from prior settings-test PATCH runs. Consider making these tests self-provisioning (owner adds mert as member in setup then removes) or seed mert into Ürün on startup."
+  ],
+  "critical_code_review_comments": [
+    "routes.py has grown to 942 lines — well over the 700-line threshold. Split into resource-specific routers (auth/projects/tasks/budget/ideas/notifications) for maintainability.",
+    "Budget export endpoint should validate fmt in {xlsx,pdf} explicitly and return 400 on other values (currently defaults to xlsx; verify).",
+    "can_see_task uses task['visible_to'] and assignees but doesn't consider explicit share by created_by across visibility=project vs private consistently — ok now, but add unit test to protect the invariant.",
+    "Mailer helpers email_task_assigned/email_project_added must be wrapped in try/except at the call site OR internally to guarantee non-blocking behavior (tests indicate they are — good). Add an integration test with EMERGENT_EMAIL_KEY missing to prove request still returns 200.",
+    "Frontend BudgetView exportBudget catches all errors as generic 'Dışa aktarma başarısız' — surface backend error message for 4xx to aid debugging."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration3.py"
+  ],
+  "success_rate": {"backend": "100% (13/13 iteration3 tests)", "frontend": "100% (all iteration3 UI flows verified)"},
+  "test_credentials": "Owner ingobiosport@gmail.com/Fikirizm2025! + demo members Demo2025! — all working. Bearer JWT via localStorage 'fik_token'.",
+  "seed_data_creation": "Backend tests created TEST_ prefixed tasks (TEST_no_budget_task, TEST_private_task, TEST_email_assign_task, TEST_email_patch_task) and TEST_email_proj project — all cleaned up in teardown. Frontend test toggled the real 'Ödül ve madalyaları sipariş et' task visibility to private and back to project; also added one member to visible_to and reverted. Final state: task visibility restored to 'project' but visible_to may contain one demo user (please verify or reset if needed).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "iteration_3 test file is /app/backend/tests/test_iteration3.py. All new features verified end-to-end (backend + UI). Iteration_2 regressions in TestBudgetPermission are due to env drift (mert removed from Ürün Geliştirme by prior PATCH tests) — not a bug introduced in iteration 3. Frontend has two console warnings (DialogTitle missing + nested button) that are cosmetic. Frontend Playwright must set REACT_APP_BACKEND_URL env when invoking pytest. Owner test task 'Ödül ve madalyaları sipariş et' may have a modified visible_to list after UI test — reset via PATCH /api/tasks/<id> {visible_to: []} if needed.",
+  "rca of the issue": "N/A — no functional issues found in iteration 3 features."
+}

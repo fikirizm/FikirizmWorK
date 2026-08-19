@@ -48,3 +48,11 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - Resend ile e-posta bildirimleri.
 - Görev dosya ekleri (object storage).
 - Gerçek üye davet akışı (davet e-postası + kurulum linki).
+
+## Implemented — İterasyon 3 (2026-08-19)
+- ✅ **Bütçe dışa aktarma**: Excel (.xlsx / openpyxl) ve PDF (reportlab) — `GET /api/projects/{id}/budget/export?fmt=xlsx|pdf`, BudgetView'da Excel/PDF butonları (blob indirme).
+- ✅ **Görev-bütçe özeti**: `GET /api/tasks/{id}` yanıtına `budget_summary` (count/planned/actual/currency); TaskDrawer'da "Bağlı Bütçe" bölümü.
+- ✅ **Rol bazlı görev gizliliği**: görevlerde `visibility` (project|private) + `visible_to`; Owner/Admin hepsini görür, aksi halde sadece seçili kişiler + atananlar + oluşturan. Liste/get erişimi filtreli (yetkisiz 403). TaskDrawer'da görünürlük seçimi + kişi seçici.
+- ✅ **E-posta bildirimleri (Resend, Emergent managed)**: projeye üye eklenince ve göreve atanınca otomatik e-posta (`mailer.py`, güvenlik gate'li, non-blocking). Gerçek gönderim doğrulandı.
+- ✅ Komut paletine gizli DialogTitle (a11y) eklendi.
+- ✅ Test: iteration3 backend 13/13, frontend UI %100.

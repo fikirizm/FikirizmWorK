@@ -58,6 +58,8 @@ class TaskBody(BaseModel):
     tags: Optional[List[str]] = []
     parent_id: Optional[str] = None
     checklist: Optional[List[dict]] = []
+    visibility: Optional[str] = "project"
+    visible_to: Optional[List[str]] = []
 
 
 class TaskUpdate(BaseModel):
@@ -71,6 +73,8 @@ class TaskUpdate(BaseModel):
     tags: Optional[List[str]] = None
     checklist: Optional[List[dict]] = None
     order: Optional[float] = None
+    visibility: Optional[str] = None
+    visible_to: Optional[List[str]] = None
 
 
 class BulkUpdate(BaseModel):
