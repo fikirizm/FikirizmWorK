@@ -53,7 +53,7 @@ export default function AcceptInvite() {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm fik-fade-up">
-        <div className="mb-6"><Logo className="h-9" chip /></div>
+        <div className="mb-6"><Logo className="h-9" /></div>
 
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /> Davet kontrol ediliyor...</div>

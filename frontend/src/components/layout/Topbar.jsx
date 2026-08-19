@@ -28,7 +28,7 @@ function MobileNav() {
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0">
         <SheetTitle className="flex items-center border-b border-border px-4 py-3">
-          <Logo className="h-6" chip />
+          <Logo className="h-6" />
         </SheetTitle>
         <nav className="flex flex-col gap-1 p-3">
           <NavLink to="/panel" className={link} data-testid="mnav-dashboard">Genel Bakış</NavLink>

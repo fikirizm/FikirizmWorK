@@ -47,7 +47,7 @@ export default function Login() {
 
       <div className="relative w-full max-w-md fik-fade-up">
         <div className="mb-7 flex justify-center">
-          <Logo className="h-24 sm:h-28" />
+          <Logo className="h-24 sm:h-28" force="light" />
         </div>
 
         <div className="rounded-2xl border border-zinc-200/80 bg-white p-8 shadow-[0_10px_40px_-12px_rgba(24,24,40,0.15)]">

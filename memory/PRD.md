@@ -70,6 +70,10 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## İterasyon 20 (2026-06) — Logo çip kaldırma + dark logo + favicon
+- Logo etrafındaki beyaz çip/kutu kaldırıldı; `Logo` bileşeni artık temaya göre otomatik varyant gösteriyor: gündüz `brand-logo.webp` (siyah), gece `brand-logo-dark.webp` (beyaz). `force="light"|"dark"` prop'u ile zorlanabiliyor (Login açık zeminde `force=light`, Register koyu panelde `force=dark`).
+- W ikonu (`/public/brand-icon.webp`) favicon + apple-touch-icon olarak eklendi (index.html; frontend restart gerekti).
+
 ## İterasyon 19 (2026-06) — Mobil optimizasyon + login logo büyütme
 - 🐛 **Mobil bütçe scroll**: recharts `ResponsiveContainer`, `min-w-0` olmayan grid hücresinde yatay taşmaya yol açıyordu → sayfa mobilde başa dönemiyordu. Grafik kartına `min-w-0 overflow-hidden` eklendi.
 - 🐛 **Mobil görev paneli (TaskDrawer)**: SheetContent `h-[100dvh] max-h-[100dvh] w-full max-w-full overflow-x-hidden overscroll-contain` → panel artık mobilde tam genişlikte sabit, yatay kaymıyor.

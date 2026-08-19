@@ -7,11 +7,14 @@ export const WMark = ({ size = 28, className = "" }) => (
   />
 );
 
-export const Logo = ({ className = "h-7", chip = false }) =>
-  chip ? (
-    <span className="inline-flex items-center rounded-md bg-white px-2 py-1">
-      <img src="/brand-logo.webp" alt="Fikirizm Work" className={"w-auto " + className} />
-    </span>
-  ) : (
-    <img src="/brand-logo.webp" alt="Fikirizm Work" className={"w-auto " + className} />
+export const Logo = ({ className = "h-7", force }) => {
+  const cls = "w-auto " + className;
+  if (force === "light") return <img src="/brand-logo.webp" alt="Fikirizm Work" className={cls} />;
+  if (force === "dark") return <img src="/brand-logo-dark.webp" alt="Fikirizm Work" className={cls} />;
+  return (
+    <>
+      <img src="/brand-logo.webp" alt="Fikirizm Work" className={cls + " dark:hidden"} />
+      <img src="/brand-logo-dark.webp" alt="Fikirizm Work" className={cls + " hidden dark:block"} />
+    </>
   );
+};

@@ -107,7 +107,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
       data-testid="sidebar"
     >
       <div className="flex h-16 items-center border-b border-border px-3">
-        {collapsed ? <WMark size={32} /> : <Logo className="h-11" chip />}
+        {collapsed ? <WMark size={32} /> : <Logo className="h-11" />}
       </div>
 
       {!collapsed && (

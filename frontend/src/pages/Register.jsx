@@ -43,7 +43,7 @@ export default function Register() {
       <div className="relative hidden lg:flex lg:w-1/2 flex-col justify-between overflow-hidden bg-zinc-950 p-12 text-white">
         <img src={AUTH_BG} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-transparent" />
-        <div className="relative"><Logo className="h-10" chip /></div>
+        <div className="relative"><Logo className="h-10" force="dark" /></div>
         <div className="relative space-y-4">
           <h2 className="font-heading text-4xl font-bold leading-tight tracking-tight">
             Ekibinizi<br />hemen kurun.
