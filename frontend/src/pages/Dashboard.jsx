@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -18,6 +18,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const setBreadcrumb = useBreadcrumb();
+  const [hoverIdx, setHoverIdx] = useState(null);
 
   useEffect(() => {
     setBreadcrumb(<span className="font-medium">Genel Bakış</span>);
@@ -57,6 +58,15 @@ export default function Dashboard() {
 
   const dist = (data.status_distribution || []).filter((s) => s.value > 0);
   const distTotal = dist.reduce((a, s) => a + s.value, 0) || 1;
+
+  const WAFFLE = 100;
+  const waffleCells = [];
+  dist.forEach((s, idx) => {
+    const n = Math.round((s.value / distTotal) * WAFFLE);
+    for (let k = 0; k < n; k++) waffleCells.push(idx);
+  });
+  waffleCells.length = WAFFLE;
+  for (let k = 0; k < WAFFLE; k++) if (waffleCells[k] === undefined) waffleCells[k] = null;
 
   const workload = Object.entries(data.workload || {})
     .map(([uid, count]) => ({ uid, name: memberMap[uid]?.name || "?", count }))
@@ -136,38 +146,66 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* STATUS RIBBON */}
+      {/* STATUS — UNIT / WAFFLE */}
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.4 }}
-        className="mt-3 rounded-lg border border-border px-5 py-5"
+        className="mt-3 rounded-lg border border-border p-5"
         data-testid="status-ribbon"
       >
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between">
           <p className="font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Durum Dağılımı</p>
-          <p className="font-mono text-[10px] text-muted-foreground">{data.total_count} görev</p>
+          <p className="font-mono text-[10px] text-muted-foreground">{data.total_count} görev · {donePct}% tamam</p>
         </div>
         {dist.length === 0 ? <p className="py-4 text-sm text-muted-foreground">Veri yok</p> : (
-          <>
-            <div className="flex h-4 w-full overflow-hidden rounded-sm bg-muted">
-              {dist.map((s, i) => (
-                <div
-                  key={s.name}
-                  className="h-full transition-[width] duration-500"
-                  style={{ width: `${(s.value / distTotal) * 100}%`, backgroundColor: "hsl(var(--foreground))", opacity: OPACITY_RAMP[i % OPACITY_RAMP.length] }}
-                  title={`${s.name}: ${s.value}`}
-                />
-              ))}
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
+            {/* Unit grid */}
+            <div
+              className="grid w-full max-w-[440px] shrink-0 gap-[3px]"
+              style={{ gridTemplateColumns: "repeat(20, minmax(0, 1fr))" }}
+              data-testid="status-waffle"
+            >
+              {waffleCells.map((c, i) => {
+                const active = hoverIdx === null || hoverIdx === c;
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.4 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.35 + i * 0.005, duration: 0.2 }}
+                    className="aspect-square rounded-[2px]"
+                    style={{
+                      backgroundColor: c === null ? "hsl(var(--muted))" : "hsl(var(--foreground))",
+                      opacity: c === null ? 1 : (active ? OPACITY_RAMP[c % OPACITY_RAMP.length] : 0.08),
+                      transition: "opacity 0.2s ease",
+                    }}
+                    title={c === null ? "" : `${dist[c].name}: ${dist[c].value}`}
+                  />
+                );
+              })}
             </div>
-            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5">
-              {dist.map((s, i) => (
-                <div key={s.name} className="flex items-center gap-2 text-sm">
-                  <span className="h-2.5 w-2.5 rounded-[2px]" style={{ backgroundColor: "hsl(var(--foreground))", opacity: OPACITY_RAMP[i % OPACITY_RAMP.length] }} />
-                  <span>{s.name}</span>
-                  <span className="font-mono text-xs text-muted-foreground">{Math.round((s.value / distTotal) * 100)}%</span>
-                </div>
-              ))}
+            {/* Ranked legend */}
+            <div className="flex-1 space-y-1">
+              {dist.map((s, i) => {
+                const pct = Math.round((s.value / distTotal) * 100);
+                const active = hoverIdx === null || hoverIdx === i;
+                return (
+                  <div
+                    key={s.name}
+                    onMouseEnter={() => setHoverIdx(i)}
+                    onMouseLeave={() => setHoverIdx(null)}
+                    className="flex cursor-default items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/60"
+                    style={{ opacity: active ? 1 : 0.4 }}
+                    data-testid={`status-legend-${i}`}
+                  >
+                    <span className="h-3 w-3 shrink-0 rounded-[3px]" style={{ backgroundColor: "hsl(var(--foreground))", opacity: OPACITY_RAMP[i % OPACITY_RAMP.length] }} />
+                    <span className="flex-1 truncate text-sm">{s.name}</span>
+                    <span className="font-mono text-xs text-muted-foreground">{s.value}</span>
+                    <span className="w-12 text-right font-mono text-lg font-light tabular-nums">{pct}<span className="text-xs text-muted-foreground">%</span></span>
+                  </div>
+                );
+              })}
             </div>
-          </>
+          </div>
         )}
       </motion.div>
 

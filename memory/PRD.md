@@ -74,7 +74,7 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - 🎨 **Genel Bakış (Dashboard) "Command-Center / Editorial" yeniden tasarımı** — daha cesur/zengin sürüm:
   - **Command panel hero**: koyu (zinc-950) tam genişlik slab + nokta-grid dokusu + amber radial ışıma; dev editorial selamlama; **amber tamamlanma halkası (SVG, animasyonlu)** done/total yüzdesi; amber "Görevlerime git" CTA.
   - **Metrik kartları**: JetBrains Mono dev sayılar + renkli oran çubukları (Açık=foreground, Geciken=rose, Bu Hafta=amber, Tamamlanan=emerald), hover kenarlık.
-  - Durum dağılımı: donut yerine monokrom **stacked ribbon** + mono yüzdeler.
+  - Durum dağılımı: donut yerine **100 kareli monokrom unit/waffle grid** (opaklık rampası) + sıralı mono lejant (büyük % sayıları); lejanta gelince ilgili kareleri vurgulayan hover mikro-etkileşimi.
   - İş yükü **liderlik tablosu** (kare baş harf + inline progress + mono sayı).
   - Bana Atananlar (sol) yoğun liste + hover translateX; Son Aktiviteler (sağ) **kare noktalı terminal timeline**.
   - framer-motion kademeli giriş + halka/çubuk animasyonları. recharts bu sayfadan kaldırıldı.
