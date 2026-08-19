@@ -59,10 +59,6 @@ export default function Dashboard() {
   const dist = (data.status_distribution || []).filter((s) => s.value > 0);
   const distTotal = dist.reduce((a, s) => a + s.value, 0) || 1;
 
-  // one square per task, grouped by status
-  const taskCells = [];
-  dist.forEach((s, idx) => { for (let k = 0; k < s.value; k++) taskCells.push(idx); });
-
   const workload = Object.entries(data.workload || {})
     .map(([uid, count]) => ({ uid, name: memberMap[uid]?.name || "?", count }))
     .sort((a, b) => b.count - a.count);
@@ -152,35 +148,34 @@ export default function Dashboard() {
           <p className="font-mono text-[10px] text-muted-foreground">{data.total_count} görev · {donePct}% tamam</p>
         </div>
         {dist.length === 0 ? <p className="py-4 text-sm text-muted-foreground">Veri yok</p> : (
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
-            {/* Unit grid — one square per task */}
-            <div className="shrink-0">
-              <div className="flex max-w-[440px] flex-wrap gap-1.5" data-testid="status-waffle">
-                {taskCells.map((c, i) => {
-                  const active = hoverIdx === null || hoverIdx === c;
-                  return (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, scale: 0.4 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.35 + i * 0.012, duration: 0.2 }}
-                      className="h-4 w-4 rounded-[3px]"
-                      style={{
-                        backgroundColor: "hsl(var(--foreground))",
-                        opacity: active ? OPACITY_RAMP[c % OPACITY_RAMP.length] : 0.08,
-                        transition: "opacity 0.2s ease",
-                      }}
-                      title={`${dist[c].name}`}
-                    />
-                  );
-                })}
-              </div>
-              <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                Her kare = 1 görev · renk tonu durumu gösterir
-              </p>
+          <div className="space-y-6">
+            {/* Segmented flow bar */}
+            <div className="flex h-16 w-full gap-1" data-testid="status-flow">
+              {dist.map((s, i) => {
+                const pct = (s.value / distTotal) * 100;
+                const active = hoverIdx === null || hoverIdx === i;
+                return (
+                  <motion.div
+                    key={s.name}
+                    onMouseEnter={() => setHoverIdx(i)}
+                    onMouseLeave={() => setHoverIdx(null)}
+                    initial={{ flexGrow: 0, opacity: 0 }}
+                    animate={{ flexGrow: s.value, opacity: active ? OPACITY_RAMP[i % OPACITY_RAMP.length] : 0.12 }}
+                    transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 + i * 0.05 }}
+                    className="relative flex min-w-[8px] cursor-default items-center justify-center overflow-hidden rounded-md first:rounded-l-lg last:rounded-r-lg"
+                    style={{ flexBasis: 0, backgroundColor: "hsl(var(--foreground))" }}
+                    title={`${s.name}: ${s.value}`}
+                  >
+                    {pct >= 8 && (
+                      <span className="font-mono text-xs font-semibold text-white mix-blend-difference">{Math.round(pct)}%</span>
+                    )}
+                  </motion.div>
+                );
+              })}
             </div>
-            {/* Ranked legend */}
-            <div className="flex-1 space-y-1">
+
+            {/* Ranked rows with big editorial numerals */}
+            <div className="grid gap-x-10 sm:grid-cols-2">
               {dist.map((s, i) => {
                 const pct = Math.round((s.value / distTotal) * 100);
                 const active = hoverIdx === null || hoverIdx === i;
@@ -189,14 +184,24 @@ export default function Dashboard() {
                     key={s.name}
                     onMouseEnter={() => setHoverIdx(i)}
                     onMouseLeave={() => setHoverIdx(null)}
-                    className="flex cursor-default items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/60"
-                    style={{ opacity: active ? 1 : 0.4 }}
+                    className="flex items-center gap-4 border-b border-border/60 py-3 transition-colors last:border-0 sm:[&:nth-last-child(2)]:border-0"
+                    style={{ opacity: active ? 1 : 0.35 }}
                     data-testid={`status-legend-${i}`}
                   >
-                    <span className="h-3 w-3 shrink-0 rounded-[3px]" style={{ backgroundColor: "hsl(var(--foreground))", opacity: OPACITY_RAMP[i % OPACITY_RAMP.length] }} />
-                    <span className="flex-1 truncate text-sm">{s.name}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{s.value} görev</span>
-                    <span className="w-12 text-right font-mono text-lg font-light tabular-nums">{pct}<span className="text-xs text-muted-foreground">%</span></span>
+                    <span className="w-12 shrink-0 text-right font-mono text-3xl font-light tabular-nums">{String(s.value).padStart(2, "0")}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="flex items-center gap-2 truncate text-sm font-medium">
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ backgroundColor: "hsl(var(--foreground))", opacity: OPACITY_RAMP[i % OPACITY_RAMP.length] }} />
+                          {s.name}
+                        </span>
+                        <span className="shrink-0 font-mono text-xs text-muted-foreground">{pct}%</span>
+                      </div>
+                      <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+                        <motion.div className="h-full rounded-full" style={{ backgroundColor: "hsl(var(--foreground))", opacity: OPACITY_RAMP[i % OPACITY_RAMP.length] }}
+                          initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ delay: 0.4 + i * 0.05, duration: 0.6 }} />
+                      </div>
+                    </div>
                   </div>
                 );
               })}

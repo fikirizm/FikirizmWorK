@@ -60,11 +60,11 @@ export default function MembersPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5 p-6">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-[1600px] space-y-6 px-6 py-8 sm:px-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">Ekip Üyeleri</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">{members.length} üye bu çalışma alanında</p>
+          <h1 className="font-heading text-3xl font-light tracking-tighter sm:text-4xl">Ekip Üyeleri</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{members.length} üye bu çalışma alanında</p>
         </div>
         {canInvite && <Button onClick={() => setOpen(true)} data-testid="invite-member-btn"><UserPlus className="mr-1.5 h-4 w-4" /> Üye davet et</Button>}
       </div>

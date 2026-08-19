@@ -28,8 +28,8 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div>
-        <h1 className="font-heading text-2xl font-bold tracking-tight">Ayarlar</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">Profil, bildirim ve çalışma alanı ayarlarınızı yönetin.</p>
+        <h1 className="font-heading text-3xl font-light tracking-tighter sm:text-4xl">Ayarlar</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Profil, bildirim ve çalışma alanı ayarlarınızı yönetin.</p>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-5">

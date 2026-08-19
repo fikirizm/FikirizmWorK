@@ -57,11 +57,11 @@ export default function IdeasPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="mx-auto max-w-[1600px] space-y-6 px-6 py-8 sm:px-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">Fikirler & Öneriler</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">Ekip fikirlerini paylaşın, oylayın ve göreve dönüştürün.</p>
+          <h1 className="font-heading text-3xl font-light tracking-tighter sm:text-4xl">Fikirler & Öneriler</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Ekip fikirlerini paylaşın, oylayın ve göreve dönüştürün.</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={sort} onValueChange={setSort}>
@@ -86,7 +86,7 @@ export default function IdeasPage() {
           <Button onClick={() => setCreateOpen(true)} className="mt-2"><Plus className="mr-1.5 h-4 w-4" /> İlk fikri ekle</Button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
           {ideas.map((idea) => {
             const voted = (idea.upvotes || []).includes(user?.user_id);
             return (

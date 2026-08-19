@@ -70,6 +70,12 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## Redesign — İterasyon 12 (2026-06)
+- 🎨 **Durum Dağılımı yeniden tasarımı** (waffle terk edildi → daha okunur/yaratıcı): cesur **segment akış çubuğu** (her segmentte % etiketi, hover ile vurgulama) + altında **büyük editorial rakamlı sıralı satırlar** (mono sayı + durum + mini oran çubuğu + %).
+- 🎨 **Tipografi tutarlılığı**: Fikirler, Üyeler, Aktivite ve Ayarlar başlıkları Dashboard ile aynı editorial karaktere getirildi (`font-heading text-3xl/4xl font-light tracking-tighter`).
+- 📐 **Tam sayfa yerleşim**: Ortada dar duran sayfalar `max-w-[1600px]` genişliğe alındı — Fikirler 3'lü kart grid'i, Aktivite 3 kolonlu (columns) kare-noktalı akış, Üyeler tam genişlik liste.
+- ✅ 4 sayfa ekran görüntüsüyle doğrulandı; temiz derleniyor. (Görsel değişiklikler; API/akış değişmedi.)
+
 ## Redesign — İterasyon 11 (2026-06)
 - 🎨 **Genel Bakış (Dashboard) "Command-Center / Editorial" yeniden tasarımı** — daha cesur/zengin sürüm:
   - **Command panel hero**: koyu (zinc-950) tam genişlik slab + nokta-grid dokusu + amber radial ışıma; dev editorial selamlama; **amber tamamlanma halkası (SVG, animasyonlu)** done/total yüzdesi; amber "Görevlerime git" CTA.

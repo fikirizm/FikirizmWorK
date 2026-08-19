@@ -38,11 +38,11 @@ export default function ActivityPage() {
   const filtered = filter === "all" ? acts : acts.filter((a) => a.action === filter);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="mx-auto max-w-[1600px] space-y-6 px-6 py-8 sm:px-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">Aktivite Akışı</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">Çalışma alanındaki tüm hareketler</p>
+          <h1 className="font-heading text-3xl font-light tracking-tighter sm:text-4xl">Aktivite Akışı</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Çalışma alanındaki tüm hareketler</p>
         </div>
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="h-9 w-52" data-testid="activity-filter"><SelectValue /></SelectTrigger>
@@ -53,15 +53,14 @@ export default function ActivityPage() {
         </Select>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-6">
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Aktivite yok.</p>
         ) : (
-          <div className="relative space-y-4 pl-4">
-            <div className="absolute left-[7px] top-1 bottom-1 w-px bg-border" />
+          <div className="relative gap-x-12 md:columns-2 xl:columns-3">
             {filtered.map((a) => (
-              <div key={a.id} className="relative flex gap-3" data-testid={`activity-row-${a.id}`}>
-                <div className="absolute -left-4 mt-1 h-3.5 w-3.5 rounded-full border-2 border-background bg-primary" />
+              <div key={a.id} className="mb-4 flex gap-3 break-inside-avoid" data-testid={`activity-row-${a.id}`}>
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 bg-foreground" />
                 <UserAvatar user={{ name: a.user_name }} size={30} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm leading-snug">
@@ -69,7 +68,7 @@ export default function ActivityPage() {
                     <span className="text-muted-foreground">{a.action}</span>{" "}
                     <span className="font-medium">{a.target}</span>
                   </p>
-                  <p className="text-xs text-muted-foreground">{relativeTime(a.created_at)}</p>
+                  <p className="font-mono text-[11px] text-muted-foreground">{relativeTime(a.created_at)}</p>
                 </div>
               </div>
             ))}
