@@ -230,7 +230,7 @@ function MailTab() {
             <div className="space-y-1.5"><Label>Gönderen e-posta</Label>
               <Input value={cfg.from_email} onChange={(e) => up("from_email", e.target.value)} placeholder="noreply@sirketiniz.com" data-testid="from-email-input" /></div>
             <div className="space-y-1.5"><Label>Gönderen adı</Label>
-              <Input value={cfg.from_name} onChange={(e) => up("from_name", e.target.value)} placeholder="Fikirizm Cloud" data-testid="from-name-input" /></div>
+              <Input value={cfg.from_name} onChange={(e) => up("from_name", e.target.value)} placeholder="Fikirizm Work" data-testid="from-name-input" /></div>
           </div>
         </div>
         <Button onClick={save} disabled={saving} data-testid="mail-save-btn">{saving ? "Kaydediliyor..." : "Kaydet"}</Button>

@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Zap } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { WMark } from "@/components/WMark";
 
 const AUTH_BG = "https://images.pexels.com/photos/36988279/pexels-photo-36988279.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940";
 
@@ -43,10 +44,8 @@ export default function Register() {
         <img src={AUTH_BG} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-transparent" />
         <div className="relative flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Zap className="h-5 w-5 text-white" />
-          </div>
-          <span className="font-heading text-lg font-bold tracking-tight">Fikirizm Cloud</span>
+          <WMark size={36} />
+          <span className="font-heading text-lg font-bold tracking-tight">Fikirizm Work</span>
         </div>
         <div className="relative space-y-4">
           <h2 className="font-heading text-4xl font-bold leading-tight tracking-tight">

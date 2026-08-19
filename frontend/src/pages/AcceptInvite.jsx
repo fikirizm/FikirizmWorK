@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Zap, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { WMark } from "@/components/WMark";
 
 export default function AcceptInvite() {
   const [params] = useSearchParams();
@@ -53,10 +54,8 @@ export default function AcceptInvite() {
     <div className="flex min-h-screen w-full items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm fik-fade-up">
         <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Zap className="h-5 w-5 text-white" />
-          </div>
-          <span className="font-heading text-lg font-bold tracking-tight">Fikirizm Cloud</span>
+          <WMark size={36} />
+          <span className="font-heading text-lg font-bold tracking-tight">Fikirizm Work</span>
         </div>
 
         {loading ? (

@@ -70,6 +70,11 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## İterasyon 15 (2026-06) — Marka (Fikirizm Work)
+- **Yeniden adlandırma**: "Fikirizm Cloud" → **"Fikirizm Work"** (Sidebar, Login, Register, AcceptInvite, Topbar, tarayıcı başlığı, mail placeholder).
+- **Logo/İkon**: Zap yerine mor daireli beyaz **W** ikonu (`WMark` bileşeni, `#5859a3`). Sidebar + tüm auth sayfalarında.
+- **Marka renkleri** (tailwind `brand`=#5859a3, `brand-yellow`=#fcea10): Hero tamamlanma halkası ve "Görevlerime git" CTA sarı (#fcea10, siyah metin); hero ışıması mor; sidebar aktivite rozeti mor. Genel siyah/monokrom dil korundu, dokunuşlar minimal.
+
 ## İterasyon 14 (2026-06) — Yerleşim
 - Aktivite sayfası tam sayfa genişliğine alındı (liste `w-full`).
 - Sol menüden "Ayarlar" kaldırıldı (erişim: sağ üst profil menüsü > Ayarlar). Ayarlar sayfası tam genişliğe (`max-w-[1600px]`) alındı.

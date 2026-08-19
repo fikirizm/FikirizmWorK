@@ -19,6 +19,7 @@ module.exports = {
         xl: 'calc(var(--radius) + 4px)'
       },
       colors: {
+        brand: { DEFAULT: '#5859a3', yellow: '#fcea10' },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAppData } from "@/context/AppData";
 import { useAuth } from "@/context/AuthContext";
 import API from "@/lib/api";
+import { WMark } from "@/components/WMark";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -106,12 +107,10 @@ export function Sidebar({ collapsed, setCollapsed }) {
       data-testid="sidebar"
     >
       <div className="flex h-12 items-center gap-2.5 border-b border-border px-3">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary">
-          <Zap className="h-[16px] w-[16px] text-primary-foreground" />
-        </div>
+        <WMark size={28} />
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate font-heading text-sm font-bold leading-tight tracking-tight">Fikirizm Cloud</p>
+            <p className="truncate font-heading text-sm font-bold leading-tight tracking-tight">Fikirizm Work</p>
             <p className="truncate text-xs text-muted-foreground">{org?.name || "Organizasyon"}</p>
           </div>
         )}
@@ -147,7 +146,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
           {!collapsed && <span className="flex-1">Aktivite</span>}
           {activityBadge > 0 && (
             <span
-              className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground"
+              className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand px-1.5 text-[10px] font-bold text-white"
               data-testid="activity-badge"
             >
               {activityBadge > 99 ? "99+" : activityBadge}

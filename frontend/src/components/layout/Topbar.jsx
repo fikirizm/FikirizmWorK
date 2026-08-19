@@ -26,7 +26,7 @@ function MobileNav() {
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0">
-        <SheetTitle className="border-b border-border px-4 py-3 font-heading">Fikirizm Cloud</SheetTitle>
+        <SheetTitle className="border-b border-border px-4 py-3 font-heading">Fikirizm Work</SheetTitle>
         <nav className="flex flex-col gap-1 p-3">
           <NavLink to="/panel" className={link} data-testid="mnav-dashboard">Genel Bakış</NavLink>
           <NavLink to="/fikirler" className={link} data-testid="mnav-ideas">Fikirler</NavLink>

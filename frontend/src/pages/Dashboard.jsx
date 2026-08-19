@@ -69,7 +69,7 @@ export default function Dashboard() {
         data-testid="overview-greeting"
       >
         <div className="pointer-events-none absolute inset-0 opacity-[0.14]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.5) 1px, transparent 0)", backgroundSize: "22px 22px" }} />
-        <div className="pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(245,158,11,0.22), transparent 70%)" }} />
+        <div className="pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(88,89,163,0.4), transparent 70%)" }} />
         <div className="relative flex flex-col gap-8 p-8 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="font-mono text-[11px] uppercase tracking-widest text-zinc-400">{today}</p>
@@ -79,7 +79,7 @@ export default function Dashboard() {
               <span className="font-mono text-white">{data.open_count}</span> açık görev seni bekliyor.
             </p>
             <button onClick={goTasks} data-testid="hero-go-tasks"
-              className="mt-5 inline-flex items-center gap-1.5 rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition-colors hover:bg-amber-400">
+              className="mt-5 inline-flex items-center gap-1.5 rounded-md bg-brand-yellow px-4 py-2 text-sm font-semibold text-zinc-950 transition-transform hover:scale-[1.03]">
               Görevlerime git <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
             </button>
           </div>
@@ -88,7 +88,7 @@ export default function Dashboard() {
               <svg width="120" height="120" className="-rotate-90">
                 <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="8" />
                 <motion.circle
-                  cx="60" cy="60" r="52" fill="none" stroke="#F59E0B" strokeWidth="8" strokeLinecap="round"
+                  cx="60" cy="60" r="52" fill="none" stroke="#fcea10" strokeWidth="8" strokeLinecap="round"
                   strokeDasharray={RING_C}
                   initial={{ strokeDashoffset: RING_C }}
                   animate={{ strokeDashoffset: RING_C * (1 - donePct / 100) }}
