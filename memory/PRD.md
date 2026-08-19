@@ -29,7 +29,16 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Fikirler: CRUD, oy, yorum, durum, göreve dönüştürme, sıralama.
 - ✅ Dashboard grafikleri, bildirim merkezi, global arama (regex-escape'li), üye yönetimi + davet.
 - ✅ WebSocket realtime (token auth'lı). Açık/koyu tema. Türkçe arayüz. Seed demo verisi.
-- ✅ Test: backend 17/17 pytest pass, frontend E2E %100 pass.
+
+## Implemented — İterasyon 2 (2026-08-19)
+- ✅ **Proje bazlı erişim kontrolü**: Owner/Admin tüm projeleri görür; Member yalnızca `members` listesinde olduğu (veya oluşturduğu) projeleri görür. Bootstrap, görev listeleme, arama ve bütçe erişimi proje erişimine göre filtreli; yetkisiz erişim 403.
+- ✅ **Proje şablonları**: Genel / Etkinlik-Yarış / Kamp — şablona göre varsayılan durumlar + bütçe kategorileri. Proje oluştururken şablon, para birimi ve erişecek üyeler seçilir.
+- ✅ **Proje bazında para birimi** (₺/$/€).
+- ✅ **Kapsamlı bütçe modülü**: gelir/gider kalemleri (kategori, açıklama, planlanan/gerçekleşen tutar, tarih, sorumlu, ilişkili görev), planlanan-vs-gerçekleşen grafiği, kategori özeti, bakiye kartları. Esnek düzenleme yetkisi (`budget_policy`: admins | members). Erişimi olan herkes görüntüler.
+- ✅ **Proje Ayarları** (Owner/Admin): üye, para birimi ve bütçe düzenleme politikasını değiştirme.
+- ✅ Dashboard done tespiti şablona göre (durum `done` bayrağı) çalışır.
+- ✅ ResizeObserver dev-overlay bastırıldı; sidebar proje oluşturma refetch ile güvence altına alındı.
+- ✅ Test: backend 34/34 pytest pass (it1+it2), frontend E2E ~%95→düzeltmeler uygulandı.
 
 ## Backlog
 - **P1**: E-posta bildirimleri (Resend); gerçek davet akışı (tek kullanımlık token/parola, şu an DEMO_PASSWORD ile eklenir); tam Gantt bağımlılık motoru; dosya eki yükleme (object storage).

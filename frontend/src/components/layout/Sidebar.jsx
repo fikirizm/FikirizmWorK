@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Lightbulb, Users, Plus, ChevronLeft, ChevronRight,
-  Zap, Folder, Rocket, Megaphone, Settings, ChevronsUpDown,
+  Zap, Folder, Rocket, Megaphone, Settings, ChevronsUpDown, Trophy, Tent,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,8 +17,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { UserAvatar } from "@/components/UserAvatar";
+import { CURRENCIES } from "@/lib/constants";
 
-const ICONS = { Rocket, Megaphone, Settings, Folder };
+const ICONS = { Rocket, Megaphone, Settings, Folder, Trophy, Tent };
+const TEMPLATE_OPTIONS = [
+  { id: "general", label: "Genel Proje" },
+  { id: "event", label: "Etkinlik / Yarış" },
+  { id: "camp", label: "Kamp" },
+];
 
 function ProjectIcon({ icon, color }) {
   const Ico = ICONS[icon] || Folder;
@@ -26,14 +37,26 @@ function ProjectIcon({ icon, color }) {
 }
 
 export function Sidebar({ collapsed, setCollapsed }) {
-  const { projects, currentWorkspace, org } = useAppData();
+  const { projects, currentWorkspace, org, members } = useAppData();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
+  const [template, setTemplate] = useState("general");
+  const [currency, setCurrency] = useState("TRY");
+  const [selMembers, setSelMembers] = useState([]);
   const [saving, setSaving] = useState(false);
+
+  const openDialog = () => {
+    setName(""); setDesc(""); setTemplate("general"); setCurrency("TRY");
+    setSelMembers(members.map((m) => m.user_id));
+    setOpen(true);
+  };
+
+  const toggleMember = (id) =>
+    setSelMembers((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
   const createProject = async () => {
     if (!name.trim() || !currentWorkspace) return;
@@ -41,10 +64,11 @@ export function Sidebar({ collapsed, setCollapsed }) {
     try {
       const { data } = await API.post("/projects", {
         workspace_id: currentWorkspace.id, name, description: desc,
+        template, currency, members: selMembers,
       });
-      await queryClient.invalidateQueries({ queryKey: ["bootstrap"] });
+      await queryClient.refetchQueries({ queryKey: ["bootstrap"] });
       toast.success("Proje oluşturuldu");
-      setOpen(false); setName(""); setDesc("");
+      setOpen(false);
       navigate(`/proje/${data.id}`);
     } catch {
       toast.error("Proje oluşturulamadı");
@@ -111,7 +135,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
           )}
           {(user?.role === "owner" || user?.role === "admin") && (
             <button
-              onClick={() => setOpen(true)}
+              onClick={openDialog}
               data-testid="add-project-btn"
               className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
               title="Proje ekle"
@@ -141,18 +165,53 @@ export function Sidebar({ collapsed, setCollapsed }) {
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent data-testid="create-project-dialog">
+        <DialogContent className="max-h-[85vh] overflow-y-auto" data-testid="create-project-dialog">
           <DialogHeader>
             <DialogTitle>Yeni Proje</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Proje adı</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Örn. Ürün Geliştirme" data-testid="project-name-input" autoFocus />
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Örn. Bisiklet Festivali 2026" data-testid="project-name-input" autoFocus />
             </div>
             <div className="space-y-2">
               <Label>Açıklama</Label>
               <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Kısa açıklama (opsiyonel)" data-testid="project-desc-input" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Proje türü / şablon</Label>
+                <Select value={template} onValueChange={setTemplate}>
+                  <SelectTrigger data-testid="project-template-select"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TEMPLATE_OPTIONS.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Para birimi</Label>
+                <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger data-testid="project-currency-select"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(CURRENCIES).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Erişecek üyeler</Label>
+              <p className="text-xs text-muted-foreground">Owner ve Admin her projeyi görür. Seçtiğiniz üyeler bu projeye erişebilir.</p>
+              <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border p-1">
+                {members.map((m) => (
+                  <button key={m.user_id} type="button" onClick={() => toggleMember(m.user_id)}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted" data-testid={`project-member-${m.user_id}`}>
+                    <Checkbox checked={selMembers.includes(m.user_id)} />
+                    <UserAvatar user={m} size={24} />
+                    <span className="flex-1 truncate text-sm">{m.name}</span>
+                    <span className="text-xs text-muted-foreground">{m.role}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>

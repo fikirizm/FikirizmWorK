@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAppData } from "@/context/AppData";
 import { AvatarStack } from "@/components/UserAvatar";
 import { PriorityBadge, StatusDot } from "@/components/Badges";
-import { formatDate, isOverdue } from "@/lib/constants";
+import { formatDate, isOverdue, doneStatusId } from "@/lib/constants";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
@@ -69,7 +69,7 @@ export function ListView({ tasks, project, onOpenTask }) {
 
   const renderRow = (t) => {
     const assignees = (t.assignees || []).map((id) => memberMap[id]).filter(Boolean);
-    const overdue = isOverdue(t.due_date) && t.status !== "done";
+    const overdue = isOverdue(t.due_date) && t.status !== doneStatusId(statuses);
     const st = statusMap[t.status];
     return (
       <>

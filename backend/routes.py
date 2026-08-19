@@ -14,7 +14,9 @@ from realtime import manager
 from models import (
     RegisterBody, LoginBody, SessionBody, WorkspaceBody, ProjectBody, ProjectUpdate,
     TaskBody, TaskUpdate, BulkUpdate, CommentBody, IdeaBody, IdeaUpdate, InviteBody,
+    BudgetBody, BudgetUpdate,
 )
+from templates_data import TEMPLATES, get_template
 
 router = APIRouter(prefix="/api")
 
@@ -22,8 +24,36 @@ DEFAULT_STATUSES = [
     {"id": "todo", "name": "Yapılacak", "color": "#71717A", "order": 0},
     {"id": "in_progress", "name": "Devam Ediyor", "color": "#3B82F6", "order": 1},
     {"id": "review", "name": "İncelemede", "color": "#F59E0B", "order": 2},
-    {"id": "done", "name": "Tamamlandı", "color": "#10B981", "order": 3},
+    {"id": "done", "name": "Tamamlandı", "color": "#10B981", "order": 3, "done": True},
 ]
+
+
+def is_privileged(user):
+    return user.get("role") in ("owner", "admin")
+
+
+def can_access_project(user, project):
+    if not project:
+        return False
+    if is_privileged(user):
+        return True
+    return user["user_id"] in project.get("members", []) or project.get("created_by") == user["user_id"]
+
+
+def can_edit_budget(user, project):
+    if is_privileged(user):
+        return True
+    if project.get("budget_policy") == "members":
+        return can_access_project(user, project)
+    return False
+
+
+async def accessible_project_ids(user):
+    if is_privileged(user):
+        return None  # None => all projects in org
+    projs = await db.projects.find(
+        {"org_id": user["org_id"]}, {"_id": 0, "id": 1, "members": 1, "created_by": 1}).to_list(2000)
+    return [p["id"] for p in projs if user["user_id"] in p.get("members", []) or p.get("created_by") == user["user_id"]]
 
 
 def now_iso():
@@ -185,9 +215,14 @@ async def bootstrap(user: dict = Depends(get_current_user)):
     org_id = user["org_id"]
     org = await db.organizations.find_one({"id": org_id}, {"_id": 0})
     workspaces = await db.workspaces.find({"org_id": org_id}, {"_id": 0}).to_list(100)
-    projects = await db.projects.find({"org_id": org_id}, {"_id": 0}).to_list(500)
+    all_projects = await db.projects.find({"org_id": org_id}, {"_id": 0}).to_list(500)
+    if is_privileged(user):
+        projects = all_projects
+    else:
+        projects = [p for p in all_projects if user["user_id"] in p.get("members", []) or p.get("created_by") == user["user_id"]]
     members = await db.users.find({"org_id": org_id}, {"_id": 0, "password_hash": 0}).to_list(200)
-    return {"org": org, "workspaces": workspaces, "projects": projects, "members": members, "user": user}
+    return {"org": org, "workspaces": workspaces, "projects": projects, "members": members,
+            "user": user, "templates": {k: {"label": v["label"], "icon": v["icon"]} for k, v in TEMPLATES.items()}}
 
 
 # ---------------- WORKSPACES ----------------
@@ -202,10 +237,15 @@ async def create_workspace(body: WorkspaceBody, user: dict = Depends(get_current
 # ---------------- PROJECTS ----------------
 @router.post("/projects")
 async def create_project(body: ProjectBody, user: dict = Depends(get_current_user)):
+    tmpl = get_template(body.template)
+    members = list(dict.fromkeys((body.members or []) + [user["user_id"]]))
     proj = {
         "id": new_id("prj_"), "org_id": user["org_id"], "workspace_id": body.workspace_id,
-        "name": body.name, "description": body.description, "color": body.color, "icon": body.icon,
-        "statuses": DEFAULT_STATUSES, "created_at": now_iso(), "created_by": user["user_id"],
+        "name": body.name, "description": body.description, "color": body.color,
+        "icon": body.icon or tmpl["icon"], "template": body.template or "general",
+        "statuses": tmpl["statuses"], "budget_categories": tmpl["budget_categories"],
+        "currency": body.currency or "TRY", "budget_policy": body.budget_policy or "admins",
+        "members": members, "created_at": now_iso(), "created_by": user["user_id"],
     }
     await db.projects.insert_one(proj)
     out = {k: v for k, v in proj.items() if k != "_id"}
@@ -216,9 +256,18 @@ async def create_project(body: ProjectBody, user: dict = Depends(get_current_use
 
 @router.patch("/projects/{project_id}")
 async def update_project(project_id: str, body: ProjectUpdate, user: dict = Depends(get_current_user)):
+    proj = await db.projects.find_one({"id": project_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not proj or not can_access_project(user, proj):
+        raise HTTPException(status_code=404, detail="Proje bulunamadı")
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    priv_only = {"members", "budget_policy"}
+    if any(k in updates for k in priv_only) and not is_privileged(user):
+        for k in priv_only:
+            updates.pop(k, None)
+    if "members" in updates:
+        updates["members"] = list(dict.fromkeys(updates["members"] + [proj.get("created_by")]))
     if updates:
-        await db.projects.update_one({"id": project_id, "org_id": user["org_id"]}, {"$set": updates})
+        await db.projects.update_one({"id": project_id}, {"$set": updates})
     proj = await db.projects.find_one({"id": project_id}, {"_id": 0})
     await manager.broadcast(proj["workspace_id"], {"type": "project", "action": "update", "data": proj})
     return proj
@@ -242,7 +291,14 @@ async def list_tasks(user: dict = Depends(get_current_user), project_id: Optiona
                      tag: Optional[str] = None, q: Optional[str] = None):
     query = {"org_id": user["org_id"]}
     if project_id:
+        proj = await db.projects.find_one({"id": project_id}, {"_id": 0})
+        if not can_access_project(user, proj):
+            raise HTTPException(status_code=403, detail="Bu projeye erişiminiz yok")
         query["project_id"] = project_id
+    else:
+        allowed = await accessible_project_ids(user)
+        if allowed is not None:
+            query["project_id"] = {"$in": allowed}
     if workspace_id:
         query["workspace_id"] = workspace_id
     if assignee:
@@ -465,10 +521,12 @@ async def convert_idea(idea_id: str, user: dict = Depends(get_current_user)):
         if not proj:
             raise HTTPException(status_code=400, detail="Dönüştürülecek bir proje bulunamadı")
         project_id = proj["id"]
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    first_status = project["statuses"][0]["id"] if project and project.get("statuses") else "todo"
     task = {
         "id": new_id("tsk_"), "org_id": user["org_id"], "workspace_id": idea["workspace_id"],
         "project_id": project_id, "parent_id": None, "title": idea["title"],
-        "description": idea.get("description", ""), "status": "todo", "priority": "medium",
+        "description": idea.get("description", ""), "status": first_status, "priority": "medium",
         "assignees": [], "due_date": None, "start_date": None, "tags": ["fikirden"],
         "checklist": [], "order": 0, "created_at": now_iso(), "created_by": user["user_id"],
     }
@@ -486,12 +544,29 @@ async def dashboard(user: dict = Depends(get_current_user), workspace_id: Option
     query = {"org_id": user["org_id"]}
     if workspace_id:
         query["workspace_id"] = workspace_id
+    allowed = await accessible_project_ids(user)
+    if allowed is not None:
+        query["project_id"] = {"$in": allowed}
+    projects = await db.projects.find({"org_id": user["org_id"]}, {"_id": 0}).to_list(2000)
+    pmap = {p["id"]: p for p in projects}
+
+    def status_meta(t):
+        proj = pmap.get(t.get("project_id"))
+        statuses = proj.get("statuses", []) if proj else []
+        for s in statuses:
+            if s["id"] == t.get("status"):
+                return s
+        return {"id": t.get("status", "todo"), "name": t.get("status", "todo"), "color": "#71717A", "done": False}
+
     tasks = await db.tasks.find({**query, "parent_id": None}, {"_id": 0}).to_list(2000)
     now = datetime.now(timezone.utc)
     week_end = now + timedelta(days=7)
-    open_tasks = [t for t in tasks if t.get("status") != "done"]
-    overdue = []
-    upcoming = []
+
+    def is_done(t):
+        return bool(status_meta(t).get("done"))
+
+    open_tasks = [t for t in tasks if not is_done(t)]
+    overdue, upcoming = [], []
     for t in open_tasks:
         if t.get("due_date"):
             try:
@@ -504,23 +579,27 @@ async def dashboard(user: dict = Depends(get_current_user), workspace_id: Option
                     upcoming.append(t)
             except Exception:
                 pass
-    status_dist = {}
+    dist = {}
     for t in tasks:
-        status_dist[t.get("status", "todo")] = status_dist.get(t.get("status", "todo"), 0) + 1
+        sm = status_meta(t)
+        key = sm["name"]
+        if key not in dist:
+            dist[key] = {"name": key, "value": 0, "color": sm.get("color", "#71717A")}
+        dist[key]["value"] += 1
     workload = {}
     for t in open_tasks:
         for a in t.get("assignees", []):
             workload[a] = workload.get(a, 0) + 1
     my_tasks = [t for t in open_tasks if user["user_id"] in t.get("assignees", [])]
-    activities = await db.activities.find(query, {"_id": 0}).to_list(500)
+    activities = await db.activities.find(query if allowed is None or "project_id" not in query else {"org_id": user["org_id"], **({"workspace_id": workspace_id} if workspace_id else {})}, {"_id": 0}).to_list(500)
     activities.sort(key=lambda a: a.get("created_at", ""), reverse=True)
     return {
         "open_count": len(open_tasks),
         "overdue_count": len(overdue),
         "upcoming_count": len(upcoming),
         "total_count": len(tasks),
-        "done_count": len([t for t in tasks if t.get("status") == "done"]),
-        "status_distribution": status_dist,
+        "done_count": len([t for t in tasks if is_done(t)]),
+        "status_distribution": list(dist.values()),
         "workload": workload,
         "my_tasks": my_tasks[:10],
         "overdue_tasks": overdue[:10],
@@ -580,8 +659,11 @@ async def invite_member(body: InviteBody, user: dict = Depends(get_current_user)
 async def search(q: str, user: dict = Depends(get_current_user)):
     if not q or len(q) < 1:
         return {"tasks": [], "ideas": []}
-    tasks = await db.tasks.find(
-        {"org_id": user["org_id"], "title": {"$regex": re.escape(q), "$options": "i"}}, {"_id": 0}).to_list(20)
+    tquery = {"org_id": user["org_id"], "title": {"$regex": re.escape(q), "$options": "i"}}
+    allowed = await accessible_project_ids(user)
+    if allowed is not None:
+        tquery["project_id"] = {"$in": allowed}
+    tasks = await db.tasks.find(tquery, {"_id": 0}).to_list(20)
     ideas = await db.ideas.find(
         {"org_id": user["org_id"], "title": {"$regex": re.escape(q), "$options": "i"}}, {"_id": 0}).to_list(20)
     return {"tasks": tasks, "ideas": ideas}
@@ -596,6 +678,94 @@ async def get_activities(user: dict = Depends(get_current_user), workspace_id: O
     acts = await db.activities.find(query, {"_id": 0}).to_list(200)
     acts.sort(key=lambda a: a.get("created_at", ""), reverse=True)
     return acts[:50]
+
+
+# ---------------- BUDGET ----------------
+def _budget_summary(items):
+    s = {"planned_income": 0.0, "actual_income": 0.0, "planned_expense": 0.0, "actual_expense": 0.0}
+    cats = {}
+    for it in items:
+        p = float(it.get("planned_amount") or 0)
+        a = float(it.get("actual_amount") or 0)
+        if it["type"] == "income":
+            s["planned_income"] += p
+            s["actual_income"] += a
+        else:
+            s["planned_expense"] += p
+            s["actual_expense"] += a
+        key = (it["type"], it.get("category", "Diğer"))
+        c = cats.setdefault(key, {"type": it["type"], "category": it.get("category", "Diğer"), "planned": 0.0, "actual": 0.0})
+        c["planned"] += p
+        c["actual"] += a
+    s["planned_balance"] = s["planned_income"] - s["planned_expense"]
+    s["actual_balance"] = s["actual_income"] - s["actual_expense"]
+    s["by_category"] = list(cats.values())
+    return s
+
+
+@router.get("/projects/{project_id}/budget")
+async def get_budget(project_id: str, user: dict = Depends(get_current_user)):
+    proj = await db.projects.find_one({"id": project_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not proj or not can_access_project(user, proj):
+        raise HTTPException(status_code=403, detail="Bu projeye erişiminiz yok")
+    items = await db.budget_items.find({"project_id": project_id}, {"_id": 0}).to_list(1000)
+    items.sort(key=lambda x: x.get("date") or x.get("created_at", ""), reverse=True)
+    return {
+        "items": items,
+        "summary": _budget_summary(items),
+        "currency": proj.get("currency", "TRY"),
+        "categories": proj.get("budget_categories", {"income": [], "expense": []}),
+        "can_edit": can_edit_budget(user, proj),
+        "policy": proj.get("budget_policy", "admins"),
+    }
+
+
+@router.post("/projects/{project_id}/budget")
+async def create_budget_item(project_id: str, body: BudgetBody, user: dict = Depends(get_current_user)):
+    proj = await db.projects.find_one({"id": project_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not proj or not can_edit_budget(user, proj):
+        raise HTTPException(status_code=403, detail="Bütçeyi düzenleme yetkiniz yok")
+    item = {
+        "id": new_id("bdg_"), "org_id": user["org_id"], "workspace_id": proj["workspace_id"],
+        "project_id": project_id, "type": body.type, "category": body.category,
+        "description": body.description or "", "planned_amount": body.planned_amount or 0,
+        "actual_amount": body.actual_amount or 0, "date": body.date, "responsible": body.responsible,
+        "task_id": body.task_id, "created_at": now_iso(), "created_by": user["user_id"],
+    }
+    await db.budget_items.insert_one(item)
+    out = {k: v for k, v in item.items() if k != "_id"}
+    await log_activity(user["org_id"], proj["workspace_id"], user, "bütçe kalemi ekledi", body.category)
+    await manager.broadcast(proj["workspace_id"], {"type": "budget", "action": "create", "data": out})
+    return out
+
+
+@router.patch("/budget/{item_id}")
+async def update_budget_item(item_id: str, body: BudgetUpdate, user: dict = Depends(get_current_user)):
+    item = await db.budget_items.find_one({"id": item_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Bütçe kalemi bulunamadı")
+    proj = await db.projects.find_one({"id": item["project_id"]}, {"_id": 0})
+    if not can_edit_budget(user, proj):
+        raise HTTPException(status_code=403, detail="Bütçeyi düzenleme yetkiniz yok")
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if updates:
+        await db.budget_items.update_one({"id": item_id}, {"$set": updates})
+    item = await db.budget_items.find_one({"id": item_id}, {"_id": 0})
+    await manager.broadcast(proj["workspace_id"], {"type": "budget", "action": "update", "data": item})
+    return item
+
+
+@router.delete("/budget/{item_id}")
+async def delete_budget_item(item_id: str, user: dict = Depends(get_current_user)):
+    item = await db.budget_items.find_one({"id": item_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not item:
+        return {"ok": True}
+    proj = await db.projects.find_one({"id": item["project_id"]}, {"_id": 0})
+    if not can_edit_budget(user, proj):
+        raise HTTPException(status_code=403, detail="Bütçeyi düzenleme yetkiniz yok")
+    await db.budget_items.delete_one({"id": item_id})
+    await manager.broadcast(proj["workspace_id"], {"type": "budget", "action": "delete", "data": {"id": item_id}})
+    return {"ok": True}
 
 
 # ---------------- WEBSOCKET ----------------

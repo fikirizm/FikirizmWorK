@@ -64,10 +64,8 @@ export default function Dashboard() {
     );
   }
 
-  const statusColors = { todo: "#71717A", in_progress: "#3B82F6", review: "#F59E0B", done: "#10B981" };
-  const statusLabels = { todo: "Yapılacak", in_progress: "Devam Ediyor", review: "İncelemede", done: "Tamamlandı" };
-  const pieData = Object.entries(data.status_distribution || {}).map(([k, v]) => ({
-    name: statusLabels[k] || k, value: v, color: statusColors[k] || "#6366F1",
+  const pieData = (data.status_distribution || []).map((s) => ({
+    name: s.name, value: s.value, color: s.color || "#6366F1",
   }));
   const workloadData = Object.entries(data.workload || {}).map(([uid, count]) => ({
     name: (memberMap[uid]?.name || "?").split(" ")[0], count, color: avatarColor(memberMap[uid]?.name || uid),
@@ -138,7 +136,7 @@ export default function Dashboard() {
           <div className="space-y-1">
             {data.my_tasks.length === 0 ? <Empty text="Üstünde harika iş! Sana atanmış açık görev yok." /> : (
               data.my_tasks.map((t) => {
-                const overdue = isOverdue(t.due_date) && t.status !== "done";
+                const overdue = isOverdue(t.due_date);
                 return (
                   <button key={t.id} onClick={() => navigate(`/proje/${t.project_id}`)}
                     className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-muted" data-testid={`my-task-${t.id}`}>

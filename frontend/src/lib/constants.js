@@ -77,3 +77,21 @@ export function toDateInput(iso) {
     return "";
   }
 }
+
+export const CURRENCIES = {
+  TRY: { symbol: "₺", label: "Türk Lirası (₺)" },
+  USD: { symbol: "$", label: "Dolar ($)" },
+  EUR: { symbol: "€", label: "Euro (€)" },
+};
+
+export function formatMoney(amount, currency = "TRY") {
+  const sym = CURRENCIES[currency]?.symbol || "";
+  const n = Number(amount || 0);
+  return `${sym}${n.toLocaleString("tr-TR", { maximumFractionDigits: 0 })}`;
+}
+
+export function doneStatusId(statuses = []) {
+  const flagged = statuses.find((s) => s.done);
+  if (flagged) return flagged.id;
+  return statuses.length ? statuses[statuses.length - 1].id : "done";
+}

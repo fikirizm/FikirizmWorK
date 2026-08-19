@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { UserAvatar, AvatarStack } from "@/components/UserAvatar";
 import { PriorityBadge } from "@/components/Badges";
-import { PRIORITIES, toDateInput, formatDateTime } from "@/lib/constants";
+import { PRIORITIES, toDateInput, formatDateTime, doneStatusId } from "@/lib/constants";
 import {
   Trash2, Plus, X, Calendar as CalIcon, Users, Flag, Tag, ListChecks,
   MessageSquare, CheckSquare, Send, GitBranch,
@@ -102,8 +102,8 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
   };
 
   const toggleSubtask = async (sub) => {
-    const doneStatus = statuses.find((s) => s.id === "done")?.id || statuses[statuses.length - 1]?.id;
-    const next = sub.status === doneStatus ? statuses[0]?.id : doneStatus;
+    const done = doneStatusId(statuses);
+    const next = sub.status === done ? statuses[0]?.id : done;
     await API.patch(`/tasks/${sub.id}`, { status: next });
     invalidate();
   };
@@ -116,7 +116,7 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
   };
 
   const assignees = (task?.assignees || []).map((id) => memberMap[id]).filter(Boolean);
-  const doneStatusId = statuses.find((s) => s.id === "done")?.id || statuses[statuses.length - 1]?.id;
+  const doneStatId = doneStatusId(statuses);
   const checkDone = (task?.checklist || []).filter((c) => c.done).length;
 
   return (
@@ -249,8 +249,8 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
                 <div className="space-y-1">
                   {(task.subtasks || []).map((s) => (
                     <div key={s.id} className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-muted" data-testid={`subtask-${s.id}`}>
-                      <Checkbox checked={s.status === doneStatusId} onCheckedChange={() => toggleSubtask(s)} />
-                      <span className={`flex-1 text-sm ${s.status === doneStatusId ? "text-muted-foreground line-through" : ""}`}>{s.title}</span>
+                      <Checkbox checked={s.status === doneStatId} onCheckedChange={() => toggleSubtask(s)} />
+                      <span className={`flex-1 text-sm ${s.status === doneStatId ? "text-muted-foreground line-through" : ""}`}>{s.title}</span>
                       {s.assignees?.length > 0 && <AvatarStack users={s.assignees.map((id) => memberMap[id]).filter(Boolean)} size={20} />}
                     </div>
                   ))}

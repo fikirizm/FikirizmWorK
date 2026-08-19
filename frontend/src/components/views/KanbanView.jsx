@@ -5,17 +5,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAppData } from "@/context/AppData";
 import { AvatarStack } from "@/components/UserAvatar";
 import { PriorityBadge } from "@/components/Badges";
-import { formatDate, isOverdue } from "@/lib/constants";
+import { formatDate, isOverdue, doneStatusId } from "@/lib/constants";
 import { Plus, MessageSquare, ListChecks, CalendarClock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-export function TaskCard({ task, onOpen, dragProps, dragging }) {
+export function TaskCard({ task, onOpen, dragProps, dragging, doneId = "done" }) {
   const { memberMap } = useAppData();
   const assignees = (task.assignees || []).map((id) => memberMap[id]).filter(Boolean);
   const checkTotal = task.checklist?.length || 0;
   const checkDone = (task.checklist || []).filter((c) => c.done).length;
-  const overdue = isOverdue(task.due_date) && task.status !== "done";
+  const overdue = isOverdue(task.due_date) && task.status !== doneId;
 
   return (
     <motion.div
@@ -65,6 +65,7 @@ export function KanbanView({ tasks, project, onOpenTask }) {
   const queryClient = useQueryClient();
   const { currentWorkspaceId } = useAppData();
   const statuses = project?.statuses || [];
+  const doneId = doneStatusId(statuses);
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [adding, setAdding] = useState(null);
@@ -128,6 +129,7 @@ export function KanbanView({ tasks, project, onOpenTask }) {
                   key={t.id}
                   task={t}
                   onOpen={onOpenTask}
+                  doneId={doneId}
                   dragging={dragId === t.id}
                   dragProps={{
                     draggable: true,
