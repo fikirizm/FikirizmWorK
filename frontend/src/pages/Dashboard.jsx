@@ -59,14 +59,9 @@ export default function Dashboard() {
   const dist = (data.status_distribution || []).filter((s) => s.value > 0);
   const distTotal = dist.reduce((a, s) => a + s.value, 0) || 1;
 
-  const WAFFLE = 100;
-  const waffleCells = [];
-  dist.forEach((s, idx) => {
-    const n = Math.round((s.value / distTotal) * WAFFLE);
-    for (let k = 0; k < n; k++) waffleCells.push(idx);
-  });
-  waffleCells.length = WAFFLE;
-  for (let k = 0; k < WAFFLE; k++) if (waffleCells[k] === undefined) waffleCells[k] = null;
+  // one square per task, grouped by status
+  const taskCells = [];
+  dist.forEach((s, idx) => { for (let k = 0; k < s.value; k++) taskCells.push(idx); });
 
   const workload = Object.entries(data.workload || {})
     .map(([uid, count]) => ({ uid, name: memberMap[uid]?.name || "?", count }))
@@ -158,30 +153,31 @@ export default function Dashboard() {
         </div>
         {dist.length === 0 ? <p className="py-4 text-sm text-muted-foreground">Veri yok</p> : (
           <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
-            {/* Unit grid */}
-            <div
-              className="grid w-full max-w-[440px] shrink-0 gap-[3px]"
-              style={{ gridTemplateColumns: "repeat(20, minmax(0, 1fr))" }}
-              data-testid="status-waffle"
-            >
-              {waffleCells.map((c, i) => {
-                const active = hoverIdx === null || hoverIdx === c;
-                return (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, scale: 0.4 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.35 + i * 0.005, duration: 0.2 }}
-                    className="aspect-square rounded-[2px]"
-                    style={{
-                      backgroundColor: c === null ? "hsl(var(--muted))" : "hsl(var(--foreground))",
-                      opacity: c === null ? 1 : (active ? OPACITY_RAMP[c % OPACITY_RAMP.length] : 0.08),
-                      transition: "opacity 0.2s ease",
-                    }}
-                    title={c === null ? "" : `${dist[c].name}: ${dist[c].value}`}
-                  />
-                );
-              })}
+            {/* Unit grid — one square per task */}
+            <div className="shrink-0">
+              <div className="flex max-w-[440px] flex-wrap gap-1.5" data-testid="status-waffle">
+                {taskCells.map((c, i) => {
+                  const active = hoverIdx === null || hoverIdx === c;
+                  return (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, scale: 0.4 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.35 + i * 0.012, duration: 0.2 }}
+                      className="h-4 w-4 rounded-[3px]"
+                      style={{
+                        backgroundColor: "hsl(var(--foreground))",
+                        opacity: active ? OPACITY_RAMP[c % OPACITY_RAMP.length] : 0.08,
+                        transition: "opacity 0.2s ease",
+                      }}
+                      title={`${dist[c].name}`}
+                    />
+                  );
+                })}
+              </div>
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Her kare = 1 görev · renk tonu durumu gösterir
+              </p>
             </div>
             {/* Ranked legend */}
             <div className="flex-1 space-y-1">
@@ -199,7 +195,7 @@ export default function Dashboard() {
                   >
                     <span className="h-3 w-3 shrink-0 rounded-[3px]" style={{ backgroundColor: "hsl(var(--foreground))", opacity: OPACITY_RAMP[i % OPACITY_RAMP.length] }} />
                     <span className="flex-1 truncate text-sm">{s.name}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{s.value}</span>
+                    <span className="font-mono text-xs text-muted-foreground">{s.value} görev</span>
                     <span className="w-12 text-right font-mono text-lg font-light tabular-nums">{pct}<span className="text-xs text-muted-foreground">%</span></span>
                   </div>
                 );
