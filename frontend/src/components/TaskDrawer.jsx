@@ -22,6 +22,7 @@ import { PRIORITIES, toDateInput, formatDateTime, doneStatusId, formatMoney } fr
 import {
   Trash2, Plus, X, Calendar as CalIcon, Users, Flag, Tag, ListChecks,
   MessageSquare, CheckSquare, Send, GitBranch, Eye, Lock, Wallet, Paperclip, Download, FileText,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -158,6 +159,10 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
     await API.delete(`/files/${id}`);
     invalidate();
   };
+
+  const images = (task?.attachments || []).filter((f) => f.content_type?.startsWith("image/"));
+  const [lightbox, setLightbox] = useState(-1);
+  const fileUrl = (f) => `${process.env.REACT_APP_BACKEND_URL}/api/files/${f.id}/download?auth=${localStorage.getItem("fik_token")}`;
 
   const assignees = (task?.assignees || []).map((id) => memberMap[id]).filter(Boolean);
   const doneStatId = doneStatusId(statuses);
@@ -359,10 +364,10 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
                     <div key={f.id} className="group flex items-center gap-2 rounded-md border border-border px-2.5 py-2 hover:bg-muted/50" data-testid={`attachment-${f.id}`}>
                       {f.content_type?.startsWith("image/") ? (
                         <img
-                          src={`${process.env.REACT_APP_BACKEND_URL}/api/files/${f.id}/download?auth=${localStorage.getItem("fik_token")}`}
+                          src={fileUrl(f)}
                           alt={f.original_filename}
                           className="h-9 w-9 shrink-0 cursor-pointer rounded object-cover border border-border"
-                          onClick={() => downloadFile(f)}
+                          onClick={() => setLightbox(images.findIndex((im) => im.id === f.id))}
                         />
                       ) : (
                         <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -409,6 +414,18 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
               </div>
             </div>
           </>
+        )}
+        {lightbox >= 0 && images[lightbox] && (
+          <div onClick={() => setLightbox(-1)} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-6" data-testid="image-lightbox">
+            <img src={fileUrl(images[lightbox])} alt="" className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl" onClick={(e) => e.stopPropagation()} />
+            <button onClick={() => setLightbox(-1)} className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20" data-testid="lightbox-close"><X className="h-5 w-5" /></button>
+            {images.length > 1 && (
+              <>
+                <button onClick={(e) => { e.stopPropagation(); setLightbox((i) => (i - 1 + images.length) % images.length); }} className="absolute left-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20" data-testid="lightbox-prev"><ChevronLeft className="h-6 w-6" /></button>
+                <button onClick={(e) => { e.stopPropagation(); setLightbox((i) => (i + 1) % images.length); }} className="absolute right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20" style={{ right: "3.5rem" }} data-testid="lightbox-next"><ChevronRight className="h-6 w-6" /></button>
+              </>
+            )}
+          </div>
         )}
       </SheetContent>
     </Sheet>

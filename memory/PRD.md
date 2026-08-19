@@ -62,9 +62,13 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ **Premium görsel**: yumuşak radyal gradient arka plan, incelmiş gölge derinliği, tutarlı geçiş animasyonları.
 - ✅ Doğrulama: backend uçları curl ile teyit (üye rol/çıkar 200, günlük+haftalık cron 401/200, dosya/thumbnail, davet akışı); frontend temiz derleniyor.
 
-## Next Tasks
-- routes.py'yi kaynak bazlı router'lara böl (bakım).
-- Realtime WS'in preview ingress 403 sorununu araştır (polling fallback devrede).
+## Implemented — İterasyon 6 (2026-08-19)
+- ✅ **Mail Ayarları sayfası** (`/ayarlar/mail`, Owner/Admin): sağlayıcı seçimi — Emergent (yönetilen) veya **Özel SMTP / Amazon SES** (host, port, kullanıcı, parola, gönderen, TLS). Kaydet + **test e-postası** butonu. Parola maskeli saklanır. `mailer.send_email` ayara göre SMTP (smtplib, threadpool) veya Emergent üzerinden gönderir.
+- ✅ **Aktivite Akışı sayfası** (`/aktivite`): tüm hareketlerin filtrelenebilir zaman tüneli (tür filtresi), 20sn polling.
+- ✅ **Görsel Lightbox**: görev eklerindeki resimlere tıklayınca tam boy önizleme + ileri/geri gezinme + kapat.
+- ✅ Sidebar'a Aktivite ve (yetkiliye) Mail Ayarları bağlantıları eklendi.
+- ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
+- ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
 ## Implemented — İterasyon 3 (2026-08-19)
 - ✅ **Bütçe dışa aktarma**: Excel (.xlsx / openpyxl) ve PDF (reportlab) — `GET /api/projects/{id}/budget/export?fmt=xlsx|pdf`, BudgetView'da Excel/PDF butonları (blob indirme).

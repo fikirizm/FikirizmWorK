@@ -13,6 +13,8 @@ import Dashboard from "@/pages/Dashboard";
 import ProjectPage from "@/pages/ProjectPage";
 import IdeasPage from "@/pages/IdeasPage";
 import MembersPage from "@/pages/MembersPage";
+import MailSettings from "@/pages/MailSettings";
+import ActivityPage from "@/pages/ActivityPage";
 import { Loader2 } from "lucide-react";
 
 function FullLoader() {
@@ -56,6 +58,8 @@ function AppRouter() {
         <Route path="/proje/:projectId" element={<ProjectPage />} />
         <Route path="/fikirler" element={<IdeasPage />} />
         <Route path="/uyeler" element={<MembersPage />} />
+        <Route path="/aktivite" element={<ActivityPage />} />
+        <Route path="/ayarlar/mail" element={<MailSettings />} />
       </Route>
       <Route path="*" element={<Navigate to="/panel" replace />} />
     </Routes>

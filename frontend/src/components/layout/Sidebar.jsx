@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Lightbulb, Users, Plus, ChevronLeft, ChevronRight,
-  Zap, Folder, Rocket, Megaphone, Settings, ChevronsUpDown, Trophy, Tent,
+  Zap, Folder, Rocket, Megaphone, Settings, ChevronsUpDown, Trophy, Tent, Activity, Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -128,6 +128,16 @@ export function Sidebar({ collapsed, setCollapsed }) {
           <Users className="h-[18px] w-[18px] shrink-0" />
           {!collapsed && "Üyeler"}
         </NavLink>
+        <NavLink to="/aktivite" className={linkCls} data-testid="nav-activity">
+          <Activity className="h-[18px] w-[18px] shrink-0" />
+          {!collapsed && "Aktivite"}
+        </NavLink>
+        {(user?.role === "owner" || user?.role === "admin") && (
+          <NavLink to="/ayarlar/mail" className={linkCls} data-testid="nav-mail-settings">
+            <Mail className="h-[18px] w-[18px] shrink-0" />
+            {!collapsed && "Mail Ayarları"}
+          </NavLink>
+        )}
 
         <div className="mt-4 mb-1 flex items-center justify-between px-3">
           {!collapsed && (

@@ -2,10 +2,15 @@ import os
 import re
 import ipaddress
 import logging
+import smtplib
 import httpx
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from html import escape
 from html.parser import HTMLParser
 from urllib.parse import urlparse
+from starlette.concurrency import run_in_threadpool
+from deps import db
 
 logger = logging.getLogger("fikirizm.mailer")
 
@@ -87,11 +92,40 @@ def _assert_safe_email(subject: str, html: str) -> None:
                 raise ValueError(f"Anchor text {m.group(1)!r} != real link host {real!r} (G3)")
 
 
+def _smtp_send(cfg, to, subject, html):
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"{cfg.get('from_name') or 'Fikirizm Cloud'} <{cfg['from_email']}>"
+    msg["To"] = to
+    msg.attach(MIMEText(html, "html", "utf-8"))
+    port = int(cfg.get("smtp_port") or 587)
+    if port == 465:
+        server = smtplib.SMTP_SSL(cfg["smtp_host"], port, timeout=30)
+    else:
+        server = smtplib.SMTP(cfg["smtp_host"], port, timeout=30)
+        if cfg.get("use_tls", True):
+            server.starttls()
+    try:
+        if cfg.get("smtp_user"):
+            server.login(cfg["smtp_user"], cfg.get("smtp_password") or "")
+        server.sendmail(cfg["from_email"], [to], msg.as_string())
+    finally:
+        server.quit()
+
+
 async def send_email(*, to: str, subject: str, html: str) -> str | None:
+    _assert_safe_email(subject, html)
+    cfg = None
+    try:
+        cfg = await db.email_settings.find_one({}, {"_id": 0})
+    except Exception:
+        cfg = None
+    if cfg and cfg.get("provider") == "smtp" and cfg.get("smtp_host") and cfg.get("from_email"):
+        await run_in_threadpool(_smtp_send, cfg, to, subject, html)
+        return "smtp"
     if not EMAIL_KEY:
         logger.warning("EMERGENT_EMAIL_KEY not set; skipping email")
         return None
-    _assert_safe_email(subject, html)
     payload = {"to": [to], "subject": subject, "html": html, "from_name": EMAIL_FROM_NAME}
     if EMAIL_REPLY_TO:
         payload["contact_email"] = EMAIL_REPLY_TO

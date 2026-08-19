@@ -39,6 +39,21 @@ class MemberUpdate(BaseModel):
     role: str
 
 
+class EmailSettingsBody(BaseModel):
+    provider: str = "emergent"  # emergent | smtp
+    smtp_host: Optional[str] = ""
+    smtp_port: Optional[int] = 587
+    smtp_user: Optional[str] = ""
+    smtp_password: Optional[str] = None
+    from_email: Optional[str] = ""
+    from_name: Optional[str] = "Fikirizm Cloud"
+    use_tls: Optional[bool] = True
+
+
+class TestEmailBody(BaseModel):
+    to: str
+
+
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None

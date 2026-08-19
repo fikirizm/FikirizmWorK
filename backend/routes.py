@@ -22,7 +22,7 @@ from realtime import manager
 from models import (
     RegisterBody, LoginBody, SessionBody, WorkspaceBody, ProjectBody, ProjectUpdate,
     TaskBody, TaskUpdate, BulkUpdate, CommentBody, IdeaBody, IdeaUpdate, InviteBody,
-    BudgetBody, BudgetUpdate, AcceptInviteBody, MemberUpdate,
+    BudgetBody, BudgetUpdate, AcceptInviteBody, MemberUpdate, EmailSettingsBody, TestEmailBody,
 )
 from templates_data import TEMPLATES, get_template
 from mailer import (email_task_assigned, email_project_added, email_invite,
@@ -1124,6 +1124,47 @@ async def delete_file(file_id: str, user: dict = Depends(get_current_user)):
     await db.files.update_one({"id": file_id}, {"$set": {"is_deleted": True}})
     await manager.broadcast(rec["workspace_id"], {"type": "attachment", "action": "delete", "data": {"id": file_id}})
     return {"ok": True}
+
+
+# ---------------- EMAIL SETTINGS ----------------
+@router.get("/settings/email")
+async def get_email_settings(user: dict = Depends(get_current_user)):
+    if not is_privileged(user):
+        raise HTTPException(status_code=403, detail="Yetkiniz yok")
+    cfg = await db.email_settings.find_one({"org_id": user["org_id"]}, {"_id": 0}) or {}
+    return {
+        "provider": cfg.get("provider", "emergent"),
+        "smtp_host": cfg.get("smtp_host", ""), "smtp_port": cfg.get("smtp_port", 587),
+        "smtp_user": cfg.get("smtp_user", ""), "from_email": cfg.get("from_email", ""),
+        "from_name": cfg.get("from_name", "Fikirizm Cloud"), "use_tls": cfg.get("use_tls", True),
+        "has_password": bool(cfg.get("smtp_password")),
+    }
+
+
+@router.put("/settings/email")
+async def save_email_settings(body: EmailSettingsBody, user: dict = Depends(get_current_user)):
+    if not is_privileged(user):
+        raise HTTPException(status_code=403, detail="Yetkiniz yok")
+    existing = await db.email_settings.find_one({"org_id": user["org_id"]}, {"_id": 0}) or {}
+    data = body.model_dump()
+    if data.get("smtp_password") is None:
+        data["smtp_password"] = existing.get("smtp_password", "")
+    data["org_id"] = user["org_id"]
+    await db.email_settings.update_one({"org_id": user["org_id"]}, {"$set": data}, upsert=True)
+    return {"ok": True}
+
+
+@router.post("/settings/email/test")
+async def test_email_settings(body: TestEmailBody, user: dict = Depends(get_current_user)):
+    if not is_privileged(user):
+        raise HTTPException(status_code=403, detail="Yetkiniz yok")
+    from mailer import send_email, _shell
+    try:
+        await send_email(to=body.to, subject="Fikirizm Cloud test e-postası",
+                         html=_shell("<p>Bu bir test e-postasıdır. Mail ayarlarınız çalışıyor! ✅</p>"))
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Gönderilemedi: {e}")
 
 
 # ---------------- CRON ----------------
