@@ -180,8 +180,8 @@ export function TaskDrawer({ taskId, project, open, onOpenChange, onDeleted }) {
           <>
             <SheetHeader className="flex flex-row items-center justify-between border-b border-border px-6 py-4 space-y-0">
               <SheetTitle className="text-sm font-medium text-muted-foreground">Görev Detayı</SheetTitle>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={del} data-testid="delete-task-btn">
-                <Trash2 className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="mr-8 h-8 gap-1.5 text-destructive hover:text-destructive" onClick={del} data-testid="delete-task-btn">
+                <Trash2 className="h-4 w-4" /> Sil
               </Button>
             </SheetHeader>
 
