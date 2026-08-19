@@ -8,10 +8,12 @@
     "forbidden_fonts": ["Inter", "Roboto", "Open Sans", "Outfit", "Space Grotesk"],
     "rules": {
       "language_support": "MUST ensure fonts support Turkish characters (Latin Extended).",
-      "h1": "text-2xl sm:text-3xl font-medium tracking-tight",
-      "h2": "text-lg sm:text-xl font-semibold tracking-tight",
+      "h1": "text-5xl sm:text-6xl font-light tracking-tighter",
+      "h2": "text-2xl sm:text-3xl font-medium tracking-tight",
+      "h3": "text-lg sm:text-xl font-semibold tracking-tight",
       "body": "text-sm leading-snug text-zinc-600 dark:text-zinc-400",
-      "metadata": "text-[11px] uppercase tracking-widest font-bold",
+      "metadata": "text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-500",
+      "data_numbers": "font-mono font-light tracking-tight",
       "general": "Avoid font-bold for everything. Use font-medium for subtle emphasis. Use tracking-tight for all headings."
     }
   },
@@ -36,18 +38,66 @@
       "text_muted": "#A1A1AA",
       "accent_highlight": "#18181B"
     },
-    "forbidden_colors": ["#1B93A4", "#7351B7", "Generic Indigo/Blue as primary"],
-    "chart_palettes": ["#3F3F46", "#71717A", "#A1A1AA", "#D4D4D8"],
+    "forbidden_colors": ["#1B93A4", "#7351B7", "Generic Indigo/Blue as primary", "Generic Gradients"],
     "status_colors": {
       "success": "emerald-600",
       "warning": "amber-500",
       "danger": "rose-500",
-      "info": "blue-500"
+      "info": "blue-500",
+      "mono_accent": "zinc-800 dark:zinc-200"
     }
+  },
+  "overview_page_redesign": {
+    "philosophy": "Command-Center / Editorial layout. AVOID the generic 4-card KPI + 2 donut chart layout. Embrace asymmetry, typography-as-UI, and dense data visualization.",
+    "layout_structure": {
+      "grid": "Use a staggered, asymmetric layout. E.g., A top section spanning full width, followed by an asymmetric 2-column split (e.g., lg:col-span-8 for Tasks, lg:col-span-4 for Activity/Workload).",
+      "spacing": "Minimize padding between structural blocks. Use sharp 1px borders to separate sections instead of floating cards with gaps."
+    },
+    "components": {
+      "hero_greeting": {
+        "description": "Massive editorial headline that breaks standard dashboard conventions.",
+        "typography": "Cabinet Grotesk, text-5xl to text-6xl, font-light, tracking-tighter.",
+        "layout": "No containing card or padding box. Sits raw on the background canvas. E.g. 'Merhaba, Ahmet.' with a subtle text-zinc-500 date next to it."
+      },
+      "key_metrics_ticker": {
+        "description": "Replaces standard KPI cards with a dense 'Status Ribbon' or 'Data Ticker'.",
+        "data_mapping": ["Açık Görev", "Geciken", "Bu Hafta", "Tamamlanan"],
+        "layout": "A single horizontal row divided by 1px vertical borders (divide-x divide-zinc-200 dark:divide-zinc-800).",
+        "typography": "Numbers: JetBrains Mono text-4xl or text-5xl font-light. Labels: Manrope text-[10px] uppercase tracking-widest text-zinc-500.",
+        "visual": "Instead of icons, rely purely on the stark contrast of large mono typography. For 'Geciken' (Overdue), tint the number slightly (e.g., text-rose-600/90)."
+      },
+      "status_distribution": {
+        "description": "NO DONUT CHARTS. Use an editorial 'Stacked Mono Bar' or 'Dot-Matrix Waffle Chart'.",
+        "layout": "A single full-width horizontal stacked progress bar (h-3 or h-4) spanning the section.",
+        "visual": "Segments are colored in monochromatic shades (Zinc-900, Zinc-600, Zinc-300) + one accent (Amber-500 for delayed). Above the bar, plot the exact percentages in JetBrains Mono alongside their labels."
+      },
+      "workload_leaderboard": {
+        "description": "Ranked leaderboard rows for team workload.",
+        "layout": "Dense list. Avatar (w-6 h-6, rounded-none or sharp corners), User Name (text-sm Manrope).",
+        "visual": "Instead of a bar chart, use inline mono horizontal progress bars (h-1.5 bg-zinc-100 dark:bg-zinc-800 with primary fill) representing task count. Right-aligned JetBrains Mono task count."
+      },
+      "bana_atananlar_tasks": {
+        "description": "My Open Tasks - Asymmetric Left Column (e.g. 70% width).",
+        "layout": "High-density data list. border-collapse with 1px border-b per row. py-2.5 or py-3 per row.",
+        "columns": "Task Title (Manrope font-medium text-sm), Project Tag (border badge, text-[10px]), Due Date (JetBrains Mono text-xs).",
+        "interaction": "Hover: subtle bg-zinc-50 dark:bg-zinc-900/50 shift + slight x-axis nudge (translateX 4px via framer-motion or tailwind group-hover)."
+      },
+      "son_aktiviteler_feed": {
+        "description": "Activity Feed - Asymmetric Right Column (e.g. 30% width).",
+        "layout": "A dense 'Terminal' style timeline feed. Connected by a 1px vertical dashed or solid line.",
+        "typography": "Timestamps: JetBrains Mono text-[11px] text-zinc-500. Activity: Manrope text-xs leading-relaxed.",
+        "visual": "Dots on the timeline should be sharp squares (w-1.5 h-1.5 bg-zinc-900 dark:bg-zinc-100) instead of standard circles."
+      }
+    },
+    "framer_motion_rules": {
+      "stagger_entrance": "The massive greeting fades and slides down slightly (y: -10). The Ticker metrics reveal horizontally (opacity + x: -10) with a 0.1s stagger.",
+      "lists": "Tasks and timeline items should stagger in (opacity 0 to 1, y: 5 to 0) to feel like a high-tech terminal booting up."
+    },
+    "testing": "All elements must have robust data-testid attributes (e.g., `data-testid=\"overview-greeting\"`, `data-testid=\"metric-ticker-geciken\"`, `data-testid=\"task-row-1\"`)."
   },
   "spacing_and_density": {
     "philosophy": "COMPACT and DENSE. Every pixel matters. Reduce unnecessary padding.",
-    "cards": "p-4 (not p-6). gap-4.",
+    "cards": "p-4 or p-5 (not p-6). minimal gaps.",
     "lists_and_tables": "h-9 or h-10 rows. py-1.5 px-3 for cells.",
     "buttons": "h-8 px-3 text-xs or h-9 px-4 text-sm. rounded-md (6px radius).",
     "badges": "h-5 px-1.5 text-[10px] rounded-sm.",
@@ -56,7 +106,6 @@
   },
   "layouts": {
     "app_shell": "Left collapsible sidebar (fixed) + Sticky Topbar. Main content area must have a max-width for ultra-wide screens or span gracefully using grid.",
-    "dashboard_grid": "Bento Protocol Mode B (High Density). grid-cols-1 md:grid-cols-4 lg:grid-cols-6. Tight gaps (gap-4).",
     "kanban": "Ghost columns (transparent bg, thin dashed border if empty), Cards are solid with 1px border. Tightly packed (gap-2).",
     "task_drawer": "Side sheet (w-[500px] to w-[600px]). Sticky header with actions, scrollable content, sticky footer for comments/budget summary.",
     "settings_tabs": "Vertical tabs on desktop (left side), compact list. Horizontal scrollable on mobile."
@@ -66,10 +115,10 @@
     "inputs_and_dropdowns": "h-8 or h-9. bg-transparent. 1px border. Focus state must be a sharp 2px ring of primary color (zinc-900/zinc-50) or pure underline, no fuzzy shadows.",
     "tables": "border-collapse. border-b border-zinc-100 dark:border-zinc-800/50. Hover state: subtle background shift.",
     "modals_drawers": "Must use Glassmorphism for overlays (backdrop-blur-sm bg-black/40). Surface of the drawer must be solid, not glass.",
-    "charts": "Recharts. Use monochromatic palettes (shades of zinc/gray) with ONE accent color (e.g., Amber or Rose) to highlight anomalies/budgets. No grid lines, or extremely faint dashed grid lines."
+    "charts": "Recharts. Use monochromatic palettes (shades of zinc/gray) with ONE accent color (e.g., Amber or Rose) to highlight anomalies. NO grid lines, or extremely faint dashed grid lines."
   },
   "visual_enhancers": {
-    "glassmorphism": "Use for Sticky Topbar ONLY. backdrop-blur-xl bg-white/70 dark:bg-[#09090b]/70 + 1px bottom border.",
+    "glassmorphism": "Use for Sticky Topbar ONLY. backdrop-blur-xl bg-white/70 dark:bg-[#09090b]/70 + 1px bottom border. DO NOT use transparent background without blur if content scrolls underneath.",
     "noise_texture": "Apply a faint SVG noise texture (opacity 2-3%) fixed over the entire app shell background to create a premium tactile paper/matte feel.",
     "tracing_beam": "Use subtle animated left-border highlight for active Sidebar items or Task list active rows."
   },
@@ -89,18 +138,16 @@
     "empty_states": "Do not use generic illustrations. Use crisp, monochromatic Phosphor/Lucide icons layered with subtle background circles and exact Turkish copy."
   },
   "instructions_to_main_agent": [
-    "Install required fonts (@fontsource/cabinet-grotesk, @fontsource/manrope, @fontsource/jetbrains-mono) via npm/yarn or add to Google Fonts import.",
-    "Update tailwind.config.js to set up the new typography scale, colors (zinc base), and custom border radiuses.",
-    "Refactor Shadcn UI components (button, card, input, table) to match the 'Compact & Premium' rules: remove default heavy shadows, decrease paddings, use sharp borders.",
-    "Implement the Layout Shell: w-56 Sidebar + h-12 Topbar. Ensure it responds well to mobile.",
-    "Apply Recharts styling constraints: monochromatic bars/lines with minimal axes.",
+    "Read the `overview_page_redesign` object carefully. Implement the exact layout, typography, and framer-motion details outlined there for the Overview page.",
+    "Install required fonts (@fontsource/cabinet-grotesk, @fontsource/manrope, @fontsource/jetbrains-mono) via npm/yarn or add to Google Fonts import if not already present.",
+    "Use framer-motion for the staggered entrance on the dashboard as explicitly detailed.",
+    "DO NOT render a traditional 4-card grid and DO NOT render standard pie/donut charts. Build the 'Stacked Mono Bar' or 'Data Ticker' as instructed.",
     "Ensure the Turkish language is hardcoded or supported seamlessly in the UI.",
-    "DO NOT apply generic Vercel/Stripe look. Follow the Tactile Monochrome premium SaaS look.",
     "DO NOT use transparent backgrounds for dropdowns or sticky headers without a blur and solid fallback."
   ],
   "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
     "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this.",
-    "Create depth through layered design elements with z-index hierarchy, NOT fluffy drop shadows.",
+    "Create depth through layered design elements with z-index hierarchy, NOT fluffy drop shadows. Use 1px sharp borders.",
     "Use glass-morphism effects with backdrop filters (12-24px blur) only where instructed (Topbar).",
     "You MUST NOT apply universal transition. Eg: `transition: all`.",
     "You MUST NOT center align the app container, ie do not add `.App { text-align: center; }` in the css file.",

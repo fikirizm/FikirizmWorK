@@ -70,6 +70,16 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## Redesign — İterasyon 11 (2026-06)
+- 🎨 **Genel Bakış (Dashboard) "Command-Center / Editorial" yeniden tasarımı** (design_agent blueprint → `overview_page_redesign`). Jenerik "4 KPI kartı + donut + bar" düzeni kaldırıldı:
+  - Dev editorial selamlama (Cabinet Grotesk, text-6xl, font-light) + tarih.
+  - Metrik şeridi: 1px dikey çizgilerle bölünmüş tek satır; JetBrains Mono dev sayılar; "Geciken" rose vurgulu.
+  - Durum dağılımı: donut yerine tam genişlik monokrom **stacked ribbon** (foreground opaklık rampası) + mono yüzdeler.
+  - İş yükü: bar chart yerine **liderlik tablosu** (kare baş harf + inline mono progress + mono sayı).
+  - Bana Atananlar (sol lg:col-span-8) yoğun liste + hover translateX; Son Aktiviteler (sağ) **kare noktalı terminal timeline**, mono zaman damgaları.
+  - framer-motion kademeli giriş animasyonları. recharts bağımlılığı bu sayfadan kaldırıldı.
+- ✅ Açık + koyu tema ekran görüntüleriyle doğrulandı; temiz derleniyor. (Görsel değişiklik; `/api/dashboard` verisi/akışı değişmedi.)
+
 ## Redesign — İterasyon 10 (2026-06)
 - 🎨 **Kompakt & Premium yeniden tasarım** (design_agent blueprint → `/app/design_guidelines.json`). Genel jenerik indigo görünümden "Tactile Monochrome / Old Money Tech" estetiğine geçiş — token tabanlı olduğu için tüm uygulamaya yayıldı:
   - **Tipografi**: Cabinet Grotesk (başlık) + Manrope (gövde) + JetBrains Mono (veri). Outfit/Inter kaldırıldı.
