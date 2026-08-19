@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import API from "@/lib/api";
 import { useAppData } from "@/context/AppData";
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import {
   List, LayoutGrid, Calendar as CalIcon, GanttChartSquare, Wallet, Plus, ChevronRight,
-  Filter, X, Settings, Lock,
+  Filter, X, Settings, Lock, Trash2,
 } from "lucide-react";
 import { PRIORITIES, CURRENCIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -170,11 +170,16 @@ export default function ProjectPage() {
 
 function ProjectSettingsDialog({ open, onOpenChange, project, members }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isPriv = user?.role === "owner" || user?.role === "admin";
   const [selMembers, setSelMembers] = useState([]);
   const [currency, setCurrency] = useState("TRY");
   const [policy, setPolicy] = useState("admins");
   const [threshold, setThreshold] = useState(100);
   const [saving, setSaving] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (open && project) {
@@ -182,11 +187,25 @@ function ProjectSettingsDialog({ open, onOpenChange, project, members }) {
       setCurrency(project.currency || "TRY");
       setPolicy(project.budget_policy || "admins");
       setThreshold(project.budget_threshold || 100);
+      setConfirmDel(false);
     }
   }, [open, project]);
 
   const toggle = (id) =>
     setSelMembers((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+  const removeProject = async () => {
+    setDeleting(true);
+    try {
+      await API.delete(`/projects/${project.id}`);
+      await queryClient.invalidateQueries({ queryKey: ["bootstrap"] });
+      toast.success("Proje silindi");
+      onOpenChange(false);
+      navigate("/panel");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Silinemedi");
+    } finally { setDeleting(false); }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -256,6 +275,34 @@ function ProjectSettingsDialog({ open, onOpenChange, project, members }) {
             </Select>
           </div>
         </div>
+
+        {isPriv && (
+          <div className="mt-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+            {!confirmDel ? (
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-destructive">Projeyi sil</p>
+                  <p className="text-xs text-muted-foreground">Tüm görevler ve bütçe kalemleri kalıcı olarak silinir.</p>
+                </div>
+                <Button variant="outline" size="sm" className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10"
+                  onClick={() => setConfirmDel(true)} data-testid="project-delete-btn">
+                  <Trash2 className="mr-1.5 h-4 w-4" /> Sil
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-destructive">Emin misiniz? Bu işlem geri alınamaz.</p>
+                <div className="flex shrink-0 gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setConfirmDel(false)}>Vazgeç</Button>
+                  <Button variant="destructive" size="sm" onClick={removeProject} disabled={deleting} data-testid="project-delete-confirm-btn">
+                    {deleting ? "Siliniyor..." : "Evet, sil"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>İptal</Button>
           <Button onClick={save} disabled={saving} data-testid="settings-save-btn">Kaydet</Button>

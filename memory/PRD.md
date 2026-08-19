@@ -70,6 +70,11 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## İterasyon 13 (2026-06) — Bug + Anlamlı Genel Bakış + Aktivite
+- 🐛 **Proje silinemiyor bug'ı**: Proje Ayarları'nda hiç silme aksiyonu yoktu. Eklendi — owner/admin için "Projeyi sil" tehlike bölgesi + iki adımlı onay (`DELETE /api/projects/{id}`). Backend'e `is_privileged` yetki kontrolü eklendi; silmede görev + bütçe + aktivite kayıtları da temizleniyor. testing_agent (iteration_8) %100 doğruladı (silme akışı + üye yetki engeli).
+- ✨ **Durum Dağılımı → "Proje İlerlemesi"**: Anlamsız durum sayacı yerine aksiyon alınabilir panel — her proje: tamamlanma %, ilerleme çubuğu, "X/Y tamam · Z açık", "N geciken" rozeti; dikkat gerektirenler (geciken/açık) önce sıralı; karta tıklayınca proje açılır. Backend `GET /api/dashboard` yeni `project_progress` alanı (görevsiz projeler gizlenir).
+- 🎨 **Aktivite sayfası**: 3 kolonlu karışık düzen → tek sütun (alt alta) net liste; üstte **zaman filtresi** (Bugün / Son 7 gün / Son 30 gün / Tümü) + hareket türü filtresi.
+
 ## Redesign — İterasyon 12 (2026-06)
 - 🎨 **Durum Dağılımı yeniden tasarımı** (waffle terk edildi → daha okunur/yaratıcı): cesur **segment akış çubuğu** (her segmentte % etiketi, hover ile vurgulama) + altında **büyük editorial rakamlı sıralı satırlar** (mono sayı + durum + mini oran çubuğu + %).
 - 🎨 **Tipografi tutarlılığı**: Fikirler, Üyeler, Aktivite ve Ayarlar başlıkları Dashboard ile aynı editorial karaktere getirildi (`font-heading text-3xl/4xl font-light tracking-tighter`).

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -11,14 +11,12 @@ import { formatDate, relativeTime, isOverdue } from "@/lib/constants";
 import { ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const OPACITY_RAMP = [1, 0.66, 0.44, 0.3, 0.2, 0.14];
 
 export default function Dashboard() {
   const { currentWorkspaceId, currentWorkspace, memberMap, allProjects } = useAppData();
   const { user } = useAuth();
   const navigate = useNavigate();
   const setBreadcrumb = useBreadcrumb();
-  const [hoverIdx, setHoverIdx] = useState(null);
 
   useEffect(() => {
     setBreadcrumb(<span className="font-medium">Genel Bakış</span>);
@@ -56,8 +54,6 @@ export default function Dashboard() {
   const RING_C = 2 * Math.PI * 52;
   const goTasks = () => navigate(`/proje/${data.my_tasks[0]?.project_id || allProjects[0]?.id || ""}`);
 
-  const dist = (data.status_distribution || []).filter((s) => s.value > 0);
-  const distTotal = dist.reduce((a, s) => a + s.value, 0) || 1;
 
   const workload = Object.entries(data.workload || {})
     .map(([uid, count]) => ({ uid, name: memberMap[uid]?.name || "?", count }))
@@ -137,75 +133,54 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* STATUS — UNIT / WAFFLE */}
+      {/* PROJECT PROGRESS — actionable */}
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.4 }}
         className="mt-3 rounded-lg border border-border p-5"
-        data-testid="status-ribbon"
+        data-testid="project-progress"
       >
         <div className="mb-5 flex items-center justify-between">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Durum Dağılımı</p>
-          <p className="font-mono text-[10px] text-muted-foreground">{data.total_count} görev · {donePct}% tamam</p>
+          <p className="font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Proje İlerlemesi</p>
+          <p className="font-mono text-[10px] text-muted-foreground">dikkat gerektirenler önce · tıkla & aç</p>
         </div>
-        {dist.length === 0 ? <p className="py-4 text-sm text-muted-foreground">Veri yok</p> : (
-          <div className="space-y-6">
-            {/* Segmented flow bar */}
-            <div className="flex h-16 w-full gap-1" data-testid="status-flow">
-              {dist.map((s, i) => {
-                const pct = (s.value / distTotal) * 100;
-                const active = hoverIdx === null || hoverIdx === i;
-                return (
-                  <motion.div
-                    key={s.name}
-                    onMouseEnter={() => setHoverIdx(i)}
-                    onMouseLeave={() => setHoverIdx(null)}
-                    initial={{ flexGrow: 0, opacity: 0 }}
-                    animate={{ flexGrow: s.value, opacity: active ? OPACITY_RAMP[i % OPACITY_RAMP.length] : 0.12 }}
-                    transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 + i * 0.05 }}
-                    className="relative flex min-w-[8px] cursor-default items-center justify-center overflow-hidden rounded-md first:rounded-l-lg last:rounded-r-lg"
-                    style={{ flexBasis: 0, backgroundColor: "hsl(var(--foreground))" }}
-                    title={`${s.name}: ${s.value}`}
-                  >
-                    {pct >= 8 && (
-                      <span className="font-mono text-xs font-semibold text-white mix-blend-difference">{Math.round(pct)}%</span>
+        {(data.project_progress || []).length === 0 ? (
+          <p className="py-4 text-sm text-muted-foreground">Görev bulunan proje yok.</p>
+        ) : (
+          <div className="grid gap-x-10 gap-y-3 lg:grid-cols-2">
+            {(data.project_progress || []).map((p, i) => (
+              <motion.button
+                key={p.id}
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 + i * 0.05 }}
+                onClick={() => navigate(`/proje/${p.id}`)}
+                className="group flex items-center gap-4 rounded-lg border border-border p-4 text-left transition-colors hover:border-foreground/30 hover:bg-muted/40"
+                data-testid={`progress-${p.id}`}
+              >
+                <span className="w-14 shrink-0 text-right font-mono text-3xl font-light tabular-nums">
+                  {p.pct}<span className="text-xs text-muted-foreground">%</span>
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: p.color }} />
+                      <span className="truncate">{p.name}</span>
+                    </span>
+                    {p.overdue > 0 && (
+                      <span className="shrink-0 rounded-sm bg-rose-500/12 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-rose-600 dark:text-rose-500">
+                        {p.overdue} geciken
+                      </span>
                     )}
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {/* Ranked rows with big editorial numerals */}
-            <div className="grid gap-x-10 sm:grid-cols-2">
-              {dist.map((s, i) => {
-                const pct = Math.round((s.value / distTotal) * 100);
-                const active = hoverIdx === null || hoverIdx === i;
-                return (
-                  <div
-                    key={s.name}
-                    onMouseEnter={() => setHoverIdx(i)}
-                    onMouseLeave={() => setHoverIdx(null)}
-                    className="flex items-center gap-4 border-b border-border/60 py-3 transition-colors last:border-0 sm:[&:nth-last-child(2)]:border-0"
-                    style={{ opacity: active ? 1 : 0.35 }}
-                    data-testid={`status-legend-${i}`}
-                  >
-                    <span className="w-12 shrink-0 text-right font-mono text-3xl font-light tabular-nums">{String(s.value).padStart(2, "0")}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="flex items-center gap-2 truncate text-sm font-medium">
-                          <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ backgroundColor: "hsl(var(--foreground))", opacity: OPACITY_RAMP[i % OPACITY_RAMP.length] }} />
-                          {s.name}
-                        </span>
-                        <span className="shrink-0 font-mono text-xs text-muted-foreground">{pct}%</span>
-                      </div>
-                      <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
-                        <motion.div className="h-full rounded-full" style={{ backgroundColor: "hsl(var(--foreground))", opacity: OPACITY_RAMP[i % OPACITY_RAMP.length] }}
-                          initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ delay: 0.4 + i * 0.05, duration: 0.6 }} />
-                      </div>
-                    </div>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <motion.div className="h-full rounded-full bg-foreground"
+                      initial={{ width: 0 }} animate={{ width: `${p.pct}%` }} transition={{ delay: 0.45 + i * 0.05, duration: 0.6 }} />
+                  </div>
+                  <p className="mt-1.5 font-mono text-[11px] text-muted-foreground">
+                    {p.done}/{p.total} tamam · {p.open} açık
+                  </p>
+                </div>
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" strokeWidth={1.5} />
+              </motion.button>
+            ))}
           </div>
         )}
       </motion.div>

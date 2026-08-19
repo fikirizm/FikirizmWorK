@@ -343,11 +343,16 @@ async def update_project(project_id: str, body: ProjectUpdate, user: dict = Depe
 
 @router.delete("/projects/{project_id}")
 async def delete_project(project_id: str, user: dict = Depends(get_current_user)):
-    proj = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not is_privileged(user):
+        raise HTTPException(status_code=403, detail="Projeyi silme yetkiniz yok")
+    proj = await db.projects.find_one({"id": project_id, "org_id": user["org_id"]}, {"_id": 0})
+    if not proj:
+        raise HTTPException(status_code=404, detail="Proje bulunamadı")
     await db.projects.delete_one({"id": project_id, "org_id": user["org_id"]})
     await db.tasks.delete_many({"project_id": project_id})
-    if proj:
-        await manager.broadcast(proj["workspace_id"], {"type": "project", "action": "delete", "data": {"id": project_id}})
+    await db.budget_items.delete_many({"project_id": project_id})
+    await db.activities.delete_many({"project_id": project_id})
+    await manager.broadcast(proj["workspace_id"], {"type": "project", "action": "delete", "data": {"id": project_id}})
     return {"ok": True}
 
 
@@ -693,6 +698,36 @@ async def dashboard(user: dict = Depends(get_current_user), workspace_id: Option
         for a in t.get("assignees", []):
             workload[a] = workload.get(a, 0) + 1
     my_tasks = [t for t in open_tasks if user["user_id"] in t.get("assignees", [])]
+
+    def parse_due(t):
+        try:
+            dd = datetime.fromisoformat(t["due_date"].replace("Z", "+00:00"))
+            return dd if dd.tzinfo else dd.replace(tzinfo=timezone.utc)
+        except Exception:
+            return None
+
+    by_proj = {}
+    for t in tasks:
+        by_proj.setdefault(t.get("project_id"), []).append(t)
+    project_progress = []
+    for p in projects:
+        if workspace_id and p.get("workspace_id") != workspace_id:
+            continue
+        if allowed is not None and p["id"] not in allowed:
+            continue
+        pts = by_proj.get(p["id"], [])
+        total = len(pts)
+        if total == 0:
+            continue
+        done = len([t for t in pts if is_done(t)])
+        od = sum(1 for t in pts if not is_done(t) and t.get("due_date") and (parse_due(t) and parse_due(t) < now))
+        project_progress.append({
+            "id": p["id"], "name": p["name"], "color": p.get("color", "#71717A"),
+            "total": total, "done": done, "open": total - done, "overdue": od,
+            "pct": round(done / total * 100) if total else 0,
+        })
+    project_progress.sort(key=lambda x: (-x["overdue"], -x["open"], x["pct"]))
+
     acts_query = {"org_id": user["org_id"]}
     if workspace_id:
         acts_query["workspace_id"] = workspace_id
@@ -708,6 +743,7 @@ async def dashboard(user: dict = Depends(get_current_user), workspace_id: Option
         "total_count": len(tasks),
         "done_count": len([t for t in tasks if is_done(t)]),
         "status_distribution": list(dist.values()),
+        "project_progress": project_progress,
         "workload": workload,
         "my_tasks": my_tasks[:10],
         "overdue_tasks": overdue[:10],

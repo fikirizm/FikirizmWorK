@@ -14,6 +14,7 @@ export default function ActivityPage() {
   const { currentWorkspaceId } = useAppData();
   const setBreadcrumb = useBreadcrumb();
   const [filter, setFilter] = useState("all");
+  const [time, setTime] = useState("all");
 
   useEffect(() => {
     setBreadcrumb(<span className="flex items-center gap-1.5 font-medium"><ActivityIcon className="h-4 w-4" /> Aktivite Akışı</span>);
@@ -35,7 +36,15 @@ export default function ActivityPage() {
   }, [acts]);
 
   const types = Array.from(new Set(acts.map((a) => a.action)));
-  const filtered = filter === "all" ? acts : acts.filter((a) => a.action === filter);
+  const inTime = (a) => {
+    if (time === "all") return true;
+    const t = new Date(a.created_at).getTime();
+    if (time === "today") { const d = new Date(); d.setHours(0, 0, 0, 0); return t >= d.getTime(); }
+    if (time === "week") return t >= Date.now() - 7 * 864e5;
+    if (time === "month") return t >= Date.now() - 30 * 864e5;
+    return true;
+  };
+  const filtered = acts.filter((a) => (filter === "all" || a.action === filter) && inTime(a));
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6 px-6 py-8 sm:px-8">
@@ -44,32 +53,41 @@ export default function ActivityPage() {
           <h1 className="font-heading text-3xl font-light tracking-tighter sm:text-4xl">Aktivite Akışı</h1>
           <p className="mt-1 text-sm text-muted-foreground">Çalışma alanındaki tüm hareketler</p>
         </div>
-        <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="h-9 w-52" data-testid="activity-filter"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tüm hareketler</SelectItem>
-            {types.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={time} onValueChange={setTime}>
+            <SelectTrigger className="h-9 w-36" data-testid="activity-time-filter"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tüm zamanlar</SelectItem>
+              <SelectItem value="today">Bugün</SelectItem>
+              <SelectItem value="week">Son 7 gün</SelectItem>
+              <SelectItem value="month">Son 30 gün</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="h-9 w-48" data-testid="activity-filter"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tüm hareketler</SelectItem>
+              {types.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6">
+      <div className="mx-auto max-w-3xl rounded-xl border border-border bg-card px-5 py-2">
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Aktivite yok.</p>
         ) : (
-          <div className="relative gap-x-12 md:columns-2 xl:columns-3">
+          <div>
             {filtered.map((a) => (
-              <div key={a.id} className="mb-4 flex gap-3 break-inside-avoid" data-testid={`activity-row-${a.id}`}>
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 bg-foreground" />
+              <div key={a.id} className="flex items-center gap-3 border-b border-border/60 py-3 last:border-0" data-testid={`activity-row-${a.id}`}>
+                <span className="h-1.5 w-1.5 shrink-0 bg-foreground" />
                 <UserAvatar user={{ name: a.user_name }} size={30} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm leading-snug">
-                    <span className="font-medium">{a.user_name}</span>{" "}
-                    <span className="text-muted-foreground">{a.action}</span>{" "}
-                    <span className="font-medium">{a.target}</span>
-                  </p>
-                  <p className="font-mono text-[11px] text-muted-foreground">{relativeTime(a.created_at)}</p>
-                </div>
+                <p className="min-w-0 flex-1 truncate text-sm">
+                  <span className="font-medium">{a.user_name}</span>{" "}
+                  <span className="text-muted-foreground">{a.action}</span>{" "}
+                  <span className="font-medium">{a.target}</span>
+                </p>
+                <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{relativeTime(a.created_at)}</span>
               </div>
             ))}
           </div>

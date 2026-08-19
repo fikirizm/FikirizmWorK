@@ -1,0 +1,29 @@
+{
+  "summary": "E2E verification of iteration 8 Fikirizm Cloud changes: (A) Project Delete bug fix via ProjectSettings danger zone, (B) Dashboard 'Proje İlerlemesi' panel, (C) Activity page single-column + time-range filter. All three verified PASS end-to-end. Permission gating for delete verified. Regression clean.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "verified_features": [
+    "PROJECT DELETE (primary bug): Owner login → created throwaway 'SilTest QA' via [data-testid=add-project-btn] using project-name-input → navigated to project → clicked project-settings-btn → danger zone visible with project-delete-btn → clicked → project-delete-confirm-btn appeared → clicked → toast 'Proje silindi' shown, dialog closed, redirected to /panel. Sidebar entry gone, and dashboard 'Proje İlerlemesi' no longer lists SilTest QA. GET-side confirmed via UI listing.",
+    "PROJECT DELETE permission: Non-privileged member (mert@fikirizm.com) navigated to 'Ürün Geliştirme' — [data-testid=project-settings-btn] NOT present (False) and [data-testid=project-delete-btn] NOT present (False). Gating verified in code at ProjectPage.jsx L98 (isPrivileged) and L288 (delete inside same gated dialog).",
+    "DASHBOARD PROGRESS PANEL: [data-testid=project-progress] visible with 5 rows. 'Ürün Geliştirme' shows 17%, '1 geciken' badge, '1/6 tamam · 5 açık'. Clicking [data-testid=progress-prj_e7fa4c4d8e8c4a64] navigated to /proje/prj_e7fa4c4d8e8c4a64 correctly. Sorting by overdue-first observed.",
+    "ACTIVITY PAGE: /aktivite renders single-column list. [data-testid=activity-time-filter] and [data-testid=activity-filter] present. Rows before filter: 14. Selecting 'Bugün' → 12 rows (filter applied). Then combining with an action-type filter ('bütçe kalemi ekledi') → 7 rows. No crash. Newest-first ordering visible ('1 saat önce' → '5 saat önce').",
+    "REGRESSION: Login OK for both owner and member. Sidebar renders. Dashboard hero + metric tiles render. Kanban (Pano) view opens for member on Ürün Geliştirme. Only console noise: pre-existing WS 403 (known env issue) and 2x 401 on /me while on /giris page (pre-existing cosmetic). No blocking errors."
+  ],
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes.py delete_project correctly enforces is_privileged (403) and cascades delete of tasks + budget_items. Also broadcasts WS. Good.",
+    "delete_project does NOT delete activities for the deleted project — orphan activities remain until _backfill_activity_projects cleanup on next restart. Consider explicit cleanup here (also for ideas/comments/files if any). Minor; not blocking.",
+    "Dashboard project_progress correctly filters by accessible_project_ids and sorts by (-overdue, -open, pct). Includes empty projects (0/0) — 'Operasyon (Gizli)' shows 0/0 · 0 açık which may be noisy in UI; consider hiding zero-task projects or last-place sort. Minor UX.",
+    "ProjectPage.jsx: both settings + delete gated behind isPrivileged in-frontend. Two-step confirm (setConfirmDel state) is a reasonable pattern; server also enforces 403 so defence-in-depth is fine.",
+    "AppData bootstrap invalidation on delete works: sidebar sync after delete verified (immediate — not waiting for 20s polling)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (curl-verified by main agent; UI-observed 200/expected behavior)", "frontend": "100% (4/4 primary features + regression)"},
+  "test_credentials": "Owner: ingobiosport@gmail.com / Fikirizm2025!. Member: mert@fikirizm.com / Demo2025! — both verified.",
+  "seed_data_creation": "Created and DELETED 'SilTest QA' project via UI as part of test. No leftover seed data.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 3 fixes verified end-to-end. Delete flow works (create → settings → delete → confirm → toast → redirect → sidebar clean). Member gating: no settings/delete buttons visible. Progress panel navigates on click. Activity time-filter + action-filter both work and are composable. Only known noise: WS 403 (preview env) and /me 401 on login page (pre-existing).",
+  "rca of the issue": "N/A — fix verification only. The bug (no delete UI) is resolved: ProjectSettingsDialog now includes a red danger zone with two-step confirm (project-delete-btn → project-delete-confirm-btn) gated by isPrivileged, calling API.delete(/projects/{id}); backend enforces is_privileged (403 otherwise) and cascades tasks + budget deletion, then broadcasts WS."
+}
