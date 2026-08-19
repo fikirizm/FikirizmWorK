@@ -8,17 +8,22 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Logo } from "@/components/WMark";
 
-const AUTH_BG = "https://images.pexels.com/photos/36988279/pexels-photo-36988279.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940";
-
 function BrandPanel() {
   return (
-    <div className="relative hidden lg:flex lg:w-1/2 flex-col justify-between overflow-hidden bg-zinc-950 p-12 text-white">
-      <img src={AUTH_BG} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
-      <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-transparent" />
-      <div className="relative">
-        <Logo className="h-10" chip />
+    <div className="relative hidden overflow-hidden bg-white lg:flex lg:w-1/2 lg:flex-col lg:items-center lg:justify-center">
+      <div className="pointer-events-none absolute -left-24 -top-24 h-80 w-80 rounded-full"
+        style={{ background: "radial-gradient(circle, rgba(88,89,163,0.14), transparent 70%)" }} />
+      <div className="pointer-events-none absolute -bottom-28 -right-20 h-80 w-80 rounded-full"
+        style={{ background: "radial-gradient(circle, rgba(252,234,16,0.16), transparent 70%)" }} />
+      <div className="pointer-events-none absolute inset-0 opacity-60"
+        style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(88,89,163,0.09) 1px, transparent 0)", backgroundSize: "26px 26px" }} />
+      <div className="relative flex flex-col items-center px-12">
+        <Logo className="h-24" />
+        <div className="mt-10 h-px w-16 bg-zinc-200" />
+        <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.35em] text-zinc-400">
+          Ekip · Görev · Fikir
+        </p>
       </div>
-      <div />
     </div>
   );
 }

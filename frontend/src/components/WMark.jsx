@@ -9,7 +9,7 @@ export const WMark = ({ size = 28, className = "" }) => (
 
 export const Logo = ({ className = "h-7", chip = false }) =>
   chip ? (
-    <span className="inline-flex items-center rounded-md bg-white px-2.5 py-1.5">
+    <span className="inline-flex items-center rounded-md bg-white px-2 py-1">
       <img src="/brand-logo.webp" alt="Fikirizm Work" className={"w-auto " + className} />
     </span>
   ) : (

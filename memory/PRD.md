@@ -70,6 +70,10 @@ ClickUp/Linear/Notion seviyesinde, Türkçe arayüzlü, multi-tenant hazır proj
 - ✅ Doğrulama: mail ayarları PUT/GET (maskeli) 200, aktivite/lightbox UI derleniyor.
 - ⏳ Ertelendi: Bildirim tercihleri (kişi bazlı e-posta türü seçimi) ve sürüklenebilir alt görevler — sonraki tur.
 
+## İterasyon 17 (2026-06) — Login beyaz zemin + logo okunurluğu
+- Login sol paneli koyu fotoğraftan **beyaz zemine** alındı; logo beyaz üzerinde büyük/okunur; köşelerde mor (#5859a3) + sarı (#fcea10) yumuşak radial ışımalar ve hafif mor nokta-grid dokusu (özgün, markalı). Minimal "EKİP · GÖREV · FİKİR" şeridi.
+- Sidebar wordmark logosu büyütüldü (h-6 → h-8) — okunabilirlik arttı. Logo chip padding'i sıkılaştırıldı.
+
 ## İterasyon 16 (2026-06) — Gerçek logo + Login sadeleştirme
 - Gerçek "fikirizm work" wordmark logosu eklendi (`/public/brand-logo.webp`) ve W ikonu (`/public/brand-icon.webp`). `WMark` artık gerçek ikonu, yeni `Logo` bileşeni wordmark'ı gösteriyor (koyu zeminler için `chip` beyaz arka plan seçeneği).
 - Kullanım: Login sol panel, Sidebar başlığı, Register, AcceptInvite, Topbar mobil menü başlığı.
